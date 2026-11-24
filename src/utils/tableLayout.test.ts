@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   clampColumnWidth,
   DEFAULT_COLUMN_VISIBILITY,
+  getColumnCheckState,
   getVisibleColumnCount,
   MAX_COLUMN_WIDTH,
   MIN_COLUMN_WIDTHS,
@@ -32,4 +33,24 @@ test('getVisibleColumnCount accounts for index and star column toggles', () => {
   assert.equal(getVisibleColumnCount({ index: true, star: false }), 3);
   assert.equal(getVisibleColumnCount({ index: false, star: false }), 2);
 });
+
+test('getColumnCheckState computes unchecked, indeterminate, and checked states', () => {
+  const ids = ['e1', 'e2', 'e3'];
+
+  assert.equal(getColumnCheckState(ids, true, new Set(), 'lang1'), 'checked');
+  assert.equal(getColumnCheckState(ids, false, new Set(), 'lang1'), 'unchecked');
+  assert.equal(getColumnCheckState(ids, false, new Set(['e1:lang1']), 'lang1'), 'indeterminate');
+  assert.equal(
+    getColumnCheckState(ids, false, new Set(['e1:lang1', 'e2:lang1']), 'lang1'),
+    'indeterminate',
+  );
+  assert.equal(
+    getColumnCheckState(ids, false, new Set(['e1:lang1', 'e2:lang1', 'e3:lang1']), 'lang1'),
+    'checked',
+  );
+  assert.equal(getColumnCheckState(ids, false, new Set(['e1:lang2']), 'lang1'), 'unchecked');
+  assert.equal(getColumnCheckState([], false, new Set(), 'lang1'), 'unchecked');
+  assert.equal(getColumnCheckState([], true, new Set(), 'lang1'), 'checked');
+});
+
 

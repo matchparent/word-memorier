@@ -279,6 +279,36 @@ export function shuffleWithSeed<T>(items: readonly T[], seed: number): T[] {
   return copy;
 }
 
+/**
+ * Shuffles entries strictly within each section separated by `segment` items.
+ * All segment dividers stay in their exact positions and no entry crosses a segment boundary.
+ */
+export function shuffleWithinSegments(items: readonly NoteItem[], seed: number): NoteItem[] {
+  const result: NoteItem[] = [];
+  let buffer: NoteEntryItem[] = [];
+  let groupIndex = 0;
+
+  const flushBuffer = () => {
+    if (buffer.length > 0) {
+      const groupSeed = ((seed >>> 0) ^ Math.imul(groupIndex + 1, 0x9e3779b1)) >>> 0;
+      result.push(...shuffleWithSeed(buffer, groupSeed));
+      buffer = [];
+      groupIndex++;
+    }
+  };
+
+  for (const item of items) {
+    if (item.kind === 'segment') {
+      flushBuffer();
+      result.push(item);
+    } else {
+      buffer.push(item);
+    }
+  }
+  flushBuffer();
+  return result;
+}
+
 export function createEntryItem(lang1: string, lang2: string, starred = false): NoteEntryItem {
   return {
     id: `entry_${cryptoRandomId()}`,

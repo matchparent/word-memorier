@@ -11,10 +11,11 @@ import {
   X,
 } from 'lucide-react';
 import type { DisplayOrderMode, NoteEntryItem, NoteFile } from '../types/notebook';
-import { INSERT_AT_TOP, shuffleWithSeed } from '../utils/noteParser';
+import { INSERT_AT_TOP, shuffleWithinSegments } from '../utils/noteParser';
 import {
   type ColumnKey,
   type ColumnWidths,
+  getColumnCheckState,
   getVisibleColumnCount,
   loadSavedColumnWidths,
   resizeColumnWidth,
@@ -125,6 +126,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   const colLabelTimerRef = useRef<number | null>(null);
   const colLabelOriginRef = useRef<{ x: number; y: number } | null>(null);
   const suppressColLabelClickRef = useRef(false);
+  const lang1CheckboxRef = useRef<HTMLInputElement | null>(null);
+  const lang2CheckboxRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setInlineInsertAnchor(null);
@@ -170,26 +173,17 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     onToggleShowLang2(checked);
   };
 
-  // Compute display rows according to orderMode + onlyStarred
+  // Compute display rows according to orderMode + onlyStarred (random shuffles only within each section)
   const renderRows = useMemo<RenderRow[]>(() => {
-    if (orderMode === 'random') {
-      const entries = note.items.filter((it): it is NoteEntryItem => it.kind === 'entry');
-      const shuffled = shuffleWithSeed(entries, randomSeed);
-      const filtered = onlyStarred ? shuffled.filter((e) => e.starred) : shuffled;
-      return filtered.map((entry, idx) => ({
-        kind: 'entry',
-        entry,
-        displayIndex: idx + 1,
-      }));
-    }
+    const orderedItems =
+      orderMode === 'random' ? shuffleWithinSegments(note.items, randomSeed) : note.items;
 
-    // Sequential mode: preserve [] segments
     const result: RenderRow[] = [];
     let entryNum = 1;
     let segNum = 1;
 
     if (!onlyStarred) {
-      for (const item of note.items) {
+      for (const item of orderedItems) {
         if (item.kind === 'segment') {
           result.push({
             kind: 'segment',
@@ -208,9 +202,9 @@ export const NoteTable: React.FC<NoteTableProps> = ({
       return result;
     }
 
-    // When filtering only starred in sequential mode, show segments that actually contain starred items
+    // When filtering only starred, keep segments that actually contain starred items
     let pendingSegment: { id: string; title: string; segmentIndex: number } | null = null;
-    for (const item of note.items) {
+    for (const item of orderedItems) {
       if (item.kind === 'segment') {
         pendingSegment = { id: item.id, title: item.title, segmentIndex: segNum++ };
       } else if (item.starred) {
@@ -227,6 +221,36 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     }
     return result;
   }, [note.items, orderMode, randomSeed, onlyStarred]);
+
+  const visibleEntryIds = useMemo(
+    () =>
+      renderRows
+        .filter((r): r is Extract<RenderRow, { kind: 'entry' }> => r.kind === 'entry')
+        .map((r) => r.entry.id),
+    [renderRows],
+  );
+
+  const col1CheckState = useMemo(
+    () => getColumnCheckState(visibleEntryIds, showLang1, revealedCells, 'lang1'),
+    [visibleEntryIds, showLang1, revealedCells],
+  );
+
+  const col2CheckState = useMemo(
+    () => getColumnCheckState(visibleEntryIds, showLang2, revealedCells, 'lang2'),
+    [visibleEntryIds, showLang2, revealedCells],
+  );
+
+  useEffect(() => {
+    if (lang1CheckboxRef.current) {
+      lang1CheckboxRef.current.indeterminate = col1CheckState === 'indeterminate';
+    }
+  }, [col1CheckState]);
+
+  useEffect(() => {
+    if (lang2CheckboxRef.current) {
+      lang2CheckboxRef.current.indeterminate = col2CheckState === 'indeterminate';
+    }
+  }, [col2CheckState]);
 
   const clearLongPress = () => {
     if (longPressTimerRef.current !== null) {
@@ -361,9 +385,9 @@ export const NoteTable: React.FC<NoteTableProps> = ({
       return;
     }
     if (field === 'lang1') {
-      handleToggleColumn1(!showLang1);
+      handleToggleColumn1(col1CheckState !== 'checked');
     } else {
-      handleToggleColumn2(!showLang2);
+      handleToggleColumn2(col2CheckState !== 'checked');
     }
   };
 
@@ -839,10 +863,16 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                     </button>
                   )}
                   <input
+                    ref={lang1CheckboxRef}
                     type="checkbox"
-                    checked={showLang1}
-                    onChange={(e) => handleToggleColumn1(e.target.checked)}
-                    title={showLang1 ? `Hide ${note.lang1Label} text` : `Show ${note.lang1Label} text`}
+                    checked={col1CheckState === 'checked'}
+                    aria-checked={col1CheckState === 'indeterminate' ? 'mixed' : col1CheckState === 'checked'}
+                    onChange={() => handleToggleColumn1(col1CheckState !== 'checked')}
+                    title={
+                      col1CheckState === 'checked'
+                        ? `Hide ${note.lang1Label} text`
+                        : `Show all ${note.lang1Label} text`
+                    }
                     aria-label={`Show ${note.lang1Label} text`}
                     className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 accent-blue-600"
                   />
@@ -889,10 +919,18 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 <div className="flex flex-wrap items-center justify-between gap-1.5 pr-1">
                   <div className="flex min-w-0 flex-1 items-center gap-1.5">
                     <input
+                      ref={lang2CheckboxRef}
                       type="checkbox"
-                      checked={showLang2}
-                      onChange={(e) => handleToggleColumn2(e.target.checked)}
-                      title={showLang2 ? `Hide ${note.lang2Label} text` : `Show ${note.lang2Label} text`}
+                      checked={col2CheckState === 'checked'}
+                      aria-checked={
+                        col2CheckState === 'indeterminate' ? 'mixed' : col2CheckState === 'checked'
+                      }
+                      onChange={() => handleToggleColumn2(col2CheckState !== 'checked')}
+                      title={
+                        col2CheckState === 'checked'
+                          ? `Hide ${note.lang2Label} text`
+                          : `Show all ${note.lang2Label} text`
+                      }
                       aria-label={`Show ${note.lang2Label} text`}
                       className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 accent-blue-600"
                     />

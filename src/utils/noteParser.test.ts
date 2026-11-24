@@ -6,6 +6,7 @@ import {
   parseNoteImportText,
   resolveUniqueFileName,
   serializeNoteToTxt,
+  shuffleWithinSegments,
   shuffleWithSeed,
 } from './noteParser';
 import {
@@ -211,4 +212,38 @@ test('insertItemsAtPosition inserts at top, after specific entry/segment, and at
     ['s1', 'e1', 'e2', 'new1'],
   );
 });
+
+test('shuffleWithinSegments preserves segment positions and only shuffles entries within each section', () => {
+  const items = [
+    { id: 'e0', kind: 'entry' as const, lang1: 'zero', lang2: '零', starred: false },
+    { id: 's1', kind: 'segment' as const, title: 'Sec 1' },
+    { id: 'e1', kind: 'entry' as const, lang1: 'one', lang2: '一', starred: false },
+    { id: 'e2', kind: 'entry' as const, lang1: 'two', lang2: '二', starred: false },
+    { id: 'e3', kind: 'entry' as const, lang1: 'three', lang2: '三', starred: false },
+    { id: 'e4', kind: 'entry' as const, lang1: 'four', lang2: '四', starred: false },
+    { id: 's2', kind: 'segment' as const, title: 'Sec 2' },
+    { id: 'e5', kind: 'entry' as const, lang1: 'five', lang2: '五', starred: false },
+    { id: 'e6', kind: 'entry' as const, lang1: 'six', lang2: '六', starred: false },
+    { id: 'e7', kind: 'entry' as const, lang1: 'seven', lang2: '七', starred: false },
+    { id: 'e8', kind: 'entry' as const, lang1: 'eight', lang2: '八', starred: false },
+  ];
+
+  const shuffled1 = shuffleWithinSegments(items, 1732352449123);
+  const shuffled2 = shuffleWithinSegments(items, 1732352449123);
+  assert.deepEqual(shuffled1, shuffled2);
+
+  // Segments stay at their exact original indices (1 and 6)
+  assert.equal(shuffled1[1].id, 's1');
+  assert.equal(shuffled1[6].id, 's2');
+  assert.equal(shuffled1[0].id, 'e0');
+
+  // Section 1 entries stay strictly inside indices 2..5
+  const sec1Ids = shuffled1.slice(2, 6).map((it) => it.id).sort();
+  assert.deepEqual(sec1Ids, ['e1', 'e2', 'e3', 'e4']);
+
+  // Section 2 entries stay strictly inside indices 7..10
+  const sec2Ids = shuffled1.slice(7, 11).map((it) => it.id).sort();
+  assert.deepEqual(sec2Ids, ['e5', 'e6', 'e7', 'e8']);
+});
+
 

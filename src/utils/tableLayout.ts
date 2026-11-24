@@ -104,3 +104,29 @@ export function saveColumnVisibility(visibility: ColumnVisibility): void {
   }
 }
 
+export type ColumnCheckState = 'checked' | 'unchecked' | 'indeterminate';
+
+export function getColumnCheckState(
+  entryIds: readonly string[],
+  isColumnShown: boolean,
+  revealedCells: ReadonlySet<string>,
+  field: 'lang1' | 'lang2',
+): ColumnCheckState {
+  if (entryIds.length === 0) {
+    return isColumnShown ? 'checked' : 'unchecked';
+  }
+  if (isColumnShown) {
+    return 'checked';
+  }
+  let shownCount = 0;
+  for (const id of entryIds) {
+    if (revealedCells.has(`${id}:${field}`)) {
+      shownCount++;
+    }
+  }
+  if (shownCount === 0) return 'unchecked';
+  if (shownCount === entryIds.length) return 'checked';
+  return 'indeterminate';
+}
+
+

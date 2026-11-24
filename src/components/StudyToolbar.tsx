@@ -7,7 +7,6 @@ import {
   PanelLeftOpen,
   PanelTopClose,
   Pencil,
-  RefreshCw,
   Shuffle,
 } from 'lucide-react';
 import type { DisplayOrderMode, NoteFile } from '../types/notebook';
@@ -18,7 +17,6 @@ interface StudyToolbarProps {
   languageName: string;
   folderName?: string;
   orderMode: DisplayOrderMode;
-  randomSeed: number;
   totalEntries: number;
   starredEntries: number;
   isMultiSelectMode: boolean;
@@ -36,7 +34,6 @@ interface StudyToolbarProps {
   onOpenMobileSidebar: () => void;
   onRenameNote: (newName: string) => void;
   onChangeOrderMode: (mode: DisplayOrderMode) => void;
-  onReshuffle: () => void;
   onOpenPasteImport: () => void;
   onExportTxt: () => void;
   showIndexCol: boolean;
@@ -50,7 +47,6 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
   languageName,
   folderName,
   orderMode,
-  randomSeed,
   totalEntries,
   starredEntries,
   isMultiSelectMode,
@@ -68,7 +64,6 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
   onOpenMobileSidebar,
   onRenameNote,
   onChangeOrderMode,
-  onReshuffle,
   onOpenPasteImport,
   onExportTxt,
   showIndexCol,
@@ -235,22 +230,6 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
                 Random
               </button>
             </div>
-
-            {orderMode === 'random' && (
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <button
-                  type="button"
-                  onClick={onReshuffle}
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Reshuffle
-                </button>
-                <span className="font-mono-tabular text-slate-400">
-                  Seed {randomSeed}
-                </span>
-              </div>
-            )}
 
             <div
               role="group"

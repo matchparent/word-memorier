@@ -320,10 +320,6 @@ export default function App() {
     setOrderMode(mode);
   };
 
-  const handleReshuffle = () => {
-    setRandomSeed(Date.now());
-  };
-
   const handleToggleStar = (entryId: string) => {
     mutateActiveNote((n) => ({
       ...n,
@@ -630,7 +626,6 @@ export default function App() {
                 languageName={activeLocation.language.name}
                 folderName={activeLocation.folder?.name}
                 orderMode={orderMode}
-                randomSeed={randomSeed}
                 totalEntries={entryStats.total}
                 starredEntries={entryStats.starred}
                 isMultiSelectMode={isMultiSelectMode}
@@ -648,7 +643,6 @@ export default function App() {
                 onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
                 onRenameNote={(name) => handleRenameNote(activeNote.id, name)}
                 onChangeOrderMode={handleChangeOrderMode}
-                onReshuffle={handleReshuffle}
                 onOpenPasteImport={() => setIsPasteModalOpen(true)}
                 onExportTxt={() => handleExportNote(activeNote.id)}
                 showIndexCol={showIndexCol}
