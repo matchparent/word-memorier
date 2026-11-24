@@ -41,6 +41,10 @@ interface StudyToolbarProps {
   onOpenPasteImport: () => void;
   onTriggerTxtImport: () => void;
   onExportTxt: () => void;
+  showIndexCol: boolean;
+  showStarCol: boolean;
+  onToggleShowIndexCol: (show: boolean) => void;
+  onToggleShowStarCol: (show: boolean) => void;
 }
 
 export const StudyToolbar: React.FC<StudyToolbarProps> = ({
@@ -70,6 +74,10 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
   onOpenPasteImport,
   onTriggerTxtImport,
   onExportTxt,
+  showIndexCol,
+  showStarCol,
+  onToggleShowIndexCol,
+  onToggleShowStarCol,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(note.name);
@@ -254,6 +262,34 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
                 </span>
               </div>
             )}
+
+            <div
+              role="group"
+              aria-label="Column visibility"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700"
+            >
+              <span className="text-[11px] font-medium text-slate-400">Columns</span>
+              <label className="inline-flex cursor-pointer items-center gap-1 font-medium hover:text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={showIndexCol}
+                  onChange={(e) => onToggleShowIndexCol(e.target.checked)}
+                  aria-label="Show index column"
+                  className="h-3.5 w-3.5 cursor-pointer rounded border-slate-400 accent-blue-600"
+                />
+                <span>#</span>
+              </label>
+              <label className="inline-flex cursor-pointer items-center gap-1 font-medium hover:text-slate-900">
+                <input
+                  type="checkbox"
+                  checked={showStarCol}
+                  onChange={(e) => onToggleShowStarCol(e.target.checked)}
+                  aria-label="Show star column"
+                  className="h-3.5 w-3.5 cursor-pointer rounded border-slate-400 accent-amber-600"
+                />
+                <span>Star</span>
+              </label>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">

@@ -65,3 +65,42 @@ export function saveColumnWidths(widths: ColumnWidths | null): void {
     // Ignore storage errors
   }
 }
+
+export interface ColumnVisibility {
+  index: boolean;
+  star: boolean;
+}
+
+export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
+  index: true,
+  star: true,
+};
+
+const COL_VISIBILITY_STORAGE_KEY = 'lexnote_col_visibility_v1';
+
+export function getVisibleColumnCount(visibility: ColumnVisibility): number {
+  return 2 + (visibility.index ? 1 : 0) + (visibility.star ? 1 : 0);
+}
+
+export function loadColumnVisibility(): ColumnVisibility {
+  try {
+    const raw = window.localStorage.getItem(COL_VISIBILITY_STORAGE_KEY);
+    if (!raw) return DEFAULT_COLUMN_VISIBILITY;
+    const parsed = JSON.parse(raw) as Partial<ColumnVisibility>;
+    return {
+      index: typeof parsed.index === 'boolean' ? parsed.index : true,
+      star: typeof parsed.star === 'boolean' ? parsed.star : true,
+    };
+  } catch {
+    return DEFAULT_COLUMN_VISIBILITY;
+  }
+}
+
+export function saveColumnVisibility(visibility: ColumnVisibility): void {
+  try {
+    window.localStorage.setItem(COL_VISIBILITY_STORAGE_KEY, JSON.stringify(visibility));
+  } catch {
+    // Ignore storage errors
+  }
+}
+

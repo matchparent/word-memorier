@@ -31,11 +31,18 @@ import {
   updateNoteInWorkspace,
 } from './utils/treeHelpers';
 import { loadWorkspace, saveWorkspace } from './utils/storage';
+import { loadColumnVisibility, saveColumnVisibility } from './utils/tableLayout';
 import { SidebarTree } from './components/SidebarTree';
 import { StudyToolbar } from './components/StudyToolbar';
 import { MultiSelectBar } from './components/MultiSelectBar';
 import { NoteTable } from './components/NoteTable';
 import { PasteImportModal } from './components/PasteImportModal';
+import { ConfirmDialog } from './components/ConfirmDialog';
+
+type PendingDeleteAction =
+  | { kind: 'segment'; id: string; label: string }
+  | { kind: 'entries'; ids: string[]; preview: string }
+  | null;
 
 export default function App() {
   const [workspace, setWorkspace] = useState<NotebookWorkspace>(() => loadWorkspace());
@@ -43,6 +50,9 @@ export default function App() {
   // Study controls state
   const [showLang1, setShowLang1] = useState(true);
   const [showLang2, setShowLang2] = useState(true);
+  const [initialColVis] = useState(() => loadColumnVisibility());
+  const [showIndexCol, setShowIndexCol] = useState(initialColVis.index);
+  const [showStarCol, setShowStarCol] = useState(initialColVis.star);
   const [onlyStarred, setOnlyStarred] = useState(false);
   const [orderMode, setOrderMode] = useState<DisplayOrderMode>('sequential');
   const [randomSeed, setRandomSeed] = useState<number>(() => Date.now());
@@ -69,6 +79,7 @@ export default function App() {
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PendingDeleteAction>(null);
   const [toastMessage, setToastMessage] = useState<{
     type: 'info' | 'error';
     text: string;
@@ -97,6 +108,10 @@ export default function App() {
       // Ignore storage errors
     }
   }, [isHeaderHidden]);
+
+  useEffect(() => {
+    saveColumnVisibility({ index: showIndexCol, star: showStarCol });
+  }, [showIndexCol, showStarCol]);
 
   // Auto-dismiss toast after 4.5 seconds
   useEffect(() => {
@@ -421,14 +436,44 @@ export default function App() {
     }));
   };
 
-  const handleBatchDelete = () => {
-    if (selectedIds.size === 0) return;
-    mutateActiveNote((n) => ({
-      ...n,
-      updatedAt: Date.now(),
-      items: n.items.filter((it) => !selectedIds.has(it.id)),
-    }));
-    exitMultiSelect();
+  const handleRequestDeleteSelected = () => {
+    if (selectedIds.size === 0 || !activeNote) return;
+    const ids = Array.from(selectedIds);
+    let preview = '';
+    if (ids.length === 1) {
+      const target = activeNote.items.find(
+        (it): it is NoteEntryItem => it.kind === 'entry' && it.id === ids[0],
+      );
+      if (target) {
+        preview = `${target.lang1} — ${target.lang2}`;
+      }
+    }
+    setPendingDelete({ kind: 'entries', ids, preview });
+  };
+
+  const handleRequestDeleteSegment = (segment: {
+    id: string;
+    title: string;
+    segmentIndex: number;
+  }) => {
+    const label = segment.title.trim() || `Section ${segment.segmentIndex}`;
+    setPendingDelete({ kind: 'segment', id: segment.id, label });
+  };
+
+  const handleConfirmPendingDelete = () => {
+    if (!pendingDelete) return;
+    if (pendingDelete.kind === 'segment') {
+      handleDeleteSegment(pendingDelete.id);
+    } else if (pendingDelete.kind === 'entries') {
+      const idSet = new Set(pendingDelete.ids);
+      mutateActiveNote((n) => ({
+        ...n,
+        updatedAt: Date.now(),
+        items: n.items.filter((it) => !idSet.has(it.id)),
+      }));
+      exitMultiSelect();
+    }
+    setPendingDelete(null);
   };
 
   // --- Paste Import Handler ---
@@ -641,7 +686,7 @@ export default function App() {
                 onClearSelection={handleClearSelection}
                 onStarSelected={() => handleBatchStar(true)}
                 onUnstarSelected={() => handleBatchStar(false)}
-                onDeleteSelected={handleBatchDelete}
+                onDeleteSelected={handleRequestDeleteSelected}
                 onExitMultiSelect={exitMultiSelect}
                 isDesktopSidebarOpen={isDesktopSidebarOpen}
                 onShowDesktopSidebar={() => setIsDesktopSidebarOpen(true)}
@@ -653,6 +698,10 @@ export default function App() {
                 onOpenPasteImport={() => setIsPasteModalOpen(true)}
                 onTriggerTxtImport={() => triggerTxtImport()}
                 onExportTxt={() => handleExportNote(activeNote.id)}
+                showIndexCol={showIndexCol}
+                showStarCol={showStarCol}
+                onToggleShowIndexCol={setShowIndexCol}
+                onToggleShowStarCol={setShowStarCol}
               />
             ) : (
               isMultiSelectMode && (
@@ -663,7 +712,7 @@ export default function App() {
                   onClearSelection={handleClearSelection}
                   onStarSelected={() => handleBatchStar(true)}
                   onUnstarSelected={() => handleBatchStar(false)}
-                  onDeleteSelected={handleBatchDelete}
+                  onDeleteSelected={handleRequestDeleteSelected}
                   onExitMultiSelect={exitMultiSelect}
                 />
               )
@@ -675,6 +724,8 @@ export default function App() {
               randomSeed={randomSeed}
               showLang1={showLang1}
               showLang2={showLang2}
+              showIndexCol={showIndexCol}
+              showStarCol={showStarCol}
               onlyStarred={onlyStarred}
               isMultiSelectMode={isMultiSelectMode}
               selectedIds={selectedIds}
@@ -687,7 +738,7 @@ export default function App() {
               onToggleStar={handleToggleStar}
               onUpdateEntry={handleUpdateEntry}
               onUpdateSegmentTitle={handleUpdateSegmentTitle}
-              onDeleteSegment={handleDeleteSegment}
+              onRequestDeleteSegment={handleRequestDeleteSegment}
               onInsertEntryAt={handleInsertEntryAt}
               onInsertSegmentAt={handleInsertSegmentAt}
               onOpenPasteImport={() => setIsPasteModalOpen(true)}
@@ -699,6 +750,35 @@ export default function App() {
               isOpen={isPasteModalOpen}
               onClose={() => setIsPasteModalOpen(false)}
               onConfirmImport={handleConfirmPasteImport}
+            />
+
+            <ConfirmDialog
+              isOpen={pendingDelete !== null}
+              title={
+                pendingDelete?.kind === 'segment'
+                  ? 'Delete Section?'
+                  : pendingDelete?.kind === 'entries' && pendingDelete.ids.length === 1
+                    ? 'Delete Entry?'
+                    : `Delete ${pendingDelete?.kind === 'entries' ? pendingDelete.ids.length : 0} Entries?`
+              }
+              message={
+                pendingDelete?.kind === 'segment'
+                  ? 'Are you sure you want to delete this section divider? Entries under it will stay in the note.'
+                  : pendingDelete?.kind === 'entries' && pendingDelete.ids.length === 1
+                    ? 'Are you sure you want to delete this entry? This action cannot be undone.'
+                    : 'Are you sure you want to delete the selected entries? This action cannot be undone.'
+              }
+              detail={
+                pendingDelete?.kind === 'segment'
+                  ? pendingDelete.label
+                  : pendingDelete?.kind === 'entries' && pendingDelete.preview
+                    ? pendingDelete.preview
+                    : undefined
+              }
+              confirmLabel="Delete"
+              cancelLabel="Cancel"
+              onConfirm={handleConfirmPendingDelete}
+              onCancel={() => setPendingDelete(null)}
             />
           </>
         ) : (

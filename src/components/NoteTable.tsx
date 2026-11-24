@@ -15,6 +15,7 @@ import { INSERT_AT_TOP, shuffleWithSeed } from '../utils/noteParser';
 import {
   type ColumnKey,
   type ColumnWidths,
+  getVisibleColumnCount,
   loadSavedColumnWidths,
   resizeColumnWidth,
   saveColumnWidths,
@@ -26,6 +27,8 @@ interface NoteTableProps {
   randomSeed: number;
   showLang1: boolean;
   showLang2: boolean;
+  showIndexCol: boolean;
+  showStarCol: boolean;
   onlyStarred: boolean;
   isMultiSelectMode: boolean;
   selectedIds: Set<string>;
@@ -38,7 +41,7 @@ interface NoteTableProps {
   onToggleStar: (entryId: string) => void;
   onUpdateEntry: (entryId: string, field: 'lang1' | 'lang2', value: string) => void;
   onUpdateSegmentTitle: (segmentId: string, title: string) => void;
-  onDeleteSegment: (segmentId: string) => void;
+  onRequestDeleteSegment: (segment: { id: string; title: string; segmentIndex: number }) => void;
   onInsertEntryAt: (lang1: string, lang2: string, afterItemId: string | null) => string;
   onInsertSegmentAt: (afterItemId: string | null) => string;
   onOpenPasteImport: () => void;
@@ -58,6 +61,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   randomSeed,
   showLang1,
   showLang2,
+  showIndexCol,
+  showStarCol,
   onlyStarred,
   isMultiSelectMode,
   selectedIds,
@@ -70,7 +75,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   onToggleStar,
   onUpdateEntry,
   onUpdateSegmentTitle,
-  onDeleteSegment,
+  onRequestDeleteSegment,
   onInsertEntryAt,
   onInsertSegmentAt,
   onOpenPasteImport,
@@ -407,13 +412,18 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     });
   };
 
+  const visibleColCount = getVisibleColumnCount({
+    index: showIndexCol,
+    star: showStarCol,
+  });
+
   const renderInlineInsertRow = () => (
     <tr
       data-testid="inline-insert-row"
       className="border-y border-blue-200 bg-blue-50/60"
     >
       {isCompactViewport ? (
-        <td colSpan={4} className="p-3 align-middle">
+        <td colSpan={visibleColCount} className="p-3 align-middle">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
@@ -486,14 +496,18 @@ export const NoteTable: React.FC<NoteTableProps> = ({
         </td>
       ) : (
         <>
-          <td className="px-2 py-2 text-center align-middle">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[11px] font-bold text-white">
-              +
-            </span>
-          </td>
-          <td className="px-3 py-2 text-center align-middle">
-            <span className="text-[11px] font-medium text-blue-700">New Row</span>
-          </td>
+          {showIndexCol && (
+            <td className="px-2 py-2 text-center align-middle">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[11px] font-bold text-white">
+                +
+              </span>
+            </td>
+          )}
+          {showStarCol && (
+            <td className="px-3 py-2 text-center align-middle">
+              <span className="text-[11px] font-medium text-blue-700">New Row</span>
+            </td>
+          )}
           <td className="px-4 py-2 align-middle">
             <input
               ref={inlineLang1Ref}
@@ -662,7 +676,10 @@ export const NoteTable: React.FC<NoteTableProps> = ({
 
   const activeColWidths = isCompactViewport ? null : colWidths;
   const totalTableWidth = activeColWidths
-    ? activeColWidths.index + activeColWidths.star + activeColWidths.lang1 + activeColWidths.lang2
+    ? (showIndexCol ? activeColWidths.index : 0) +
+      (showStarCol ? activeColWidths.star : 0) +
+      activeColWidths.lang1 +
+      activeColWidths.lang2
     : undefined;
 
   return (
@@ -675,61 +692,75 @@ export const NoteTable: React.FC<NoteTableProps> = ({
           }`}
         >
           <colgroup>
-            <col width={activeColWidths?.index} className={activeColWidths ? undefined : 'w-11 md:w-20'} />
-            <col width={activeColWidths?.star} className={activeColWidths ? undefined : 'w-14 md:w-24'} />
+            {showIndexCol && (
+              <col
+                width={activeColWidths?.index}
+                className={activeColWidths ? undefined : 'w-11 md:w-20'}
+              />
+            )}
+            {showStarCol && (
+              <col
+                width={activeColWidths?.star}
+                className={activeColWidths ? undefined : 'w-14 md:w-24'}
+              />
+            )}
             <col width={activeColWidths?.lang1} />
             <col width={activeColWidths?.lang2} />
           </colgroup>
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur-xs">
             <tr className="text-[11px] font-semibold text-slate-600 md:text-xs">
               {/* Column 1: # + Insert at Top trigger */}
-              <th
-                ref={(el) => {
-                  thRefs.current.index = el;
-                }}
-                scope="col"
-                className="relative px-1 py-2 text-center md:px-3 md:py-2.5"
-              >
-                <div className="inline-flex items-center justify-center gap-0.5 md:gap-1">
-                  <span>#</span>
-                  {!isMultiSelectMode && (
-                    <button
-                      type="button"
-                      title="Insert at top of table"
-                      aria-label="Insert row at top"
-                      onClick={() => openInlineInsert(INSERT_AT_TOP)}
-                      className="rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                {renderResizeHandle('index', 'Index')}
-              </th>
+              {showIndexCol && (
+                <th
+                  ref={(el) => {
+                    thRefs.current.index = el;
+                  }}
+                  scope="col"
+                  className="relative px-1 py-2 text-center md:px-3 md:py-2.5"
+                >
+                  <div className="inline-flex items-center justify-center gap-0.5 md:gap-1">
+                    <span>#</span>
+                    {!isMultiSelectMode && (
+                      <button
+                        type="button"
+                        title="Insert at top of table"
+                        aria-label="Insert row at top"
+                        onClick={() => openInlineInsert(INSERT_AT_TOP)}
+                        className="rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {renderResizeHandle('index', 'Index')}
+                </th>
+              )}
 
               {/* Column 2: Star + Single-Row Filter Checkbox */}
-              <th
-                ref={(el) => {
-                  thRefs.current.star = el;
-                }}
-                scope="col"
-                className="relative px-1 py-2 text-center md:px-3 md:py-2.5"
-              >
-                <label
-                  title="Show starred entries only"
-                  className="inline-flex cursor-pointer items-center justify-center gap-1 font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap md:gap-1.5"
+              {showStarCol && (
+                <th
+                  ref={(el) => {
+                    thRefs.current.star = el;
+                  }}
+                  scope="col"
+                  className="relative px-1 py-2 text-center md:px-3 md:py-2.5"
                 >
-                  <input
-                    type="checkbox"
-                    checked={onlyStarred}
-                    onChange={(e) => onToggleOnlyStarred(e.target.checked)}
-                    aria-label="Star"
-                    className="h-3.5 w-3.5 rounded border-slate-300 accent-amber-600"
-                  />
-                  <span>Star</span>
-                </label>
-                {renderResizeHandle('star', 'Star')}
-              </th>
+                  <label
+                    title="Show starred entries only"
+                    className="inline-flex cursor-pointer items-center justify-center gap-1 font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap md:gap-1.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={onlyStarred}
+                      onChange={(e) => onToggleOnlyStarred(e.target.checked)}
+                      aria-label="Star"
+                      className="h-3.5 w-3.5 rounded border-slate-300 accent-amber-600"
+                    />
+                    <span>Star</span>
+                  </label>
+                  {renderResizeHandle('star', 'Star')}
+                </th>
+              )}
 
               {/* Column 3: Lang 1 + Checkbox only (no "Show text" label) */}
               <th
@@ -740,6 +771,17 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 className="relative px-2 py-2 md:px-4 md:py-2.5"
               >
                 <div className="flex min-w-0 items-center gap-1.5 pr-1">
+                  {!showIndexCol && !isMultiSelectMode && (
+                    <button
+                      type="button"
+                      title="Insert at top of table"
+                      aria-label="Insert row at top"
+                      onClick={() => openInlineInsert(INSERT_AT_TOP)}
+                      className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <input
                     type="checkbox"
                     checked={showLang1}
@@ -847,7 +889,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
 
             {renderRows.length === 0 && inlineInsertAnchor !== INSERT_AT_TOP && (
               <tr>
-                <td colSpan={4} className="px-6 py-16 text-center">
+                <td colSpan={visibleColCount} className="px-6 py-16 text-center">
                   <div className="mx-auto max-w-md space-y-3">
                     <p className="text-sm font-medium text-slate-700">
                       {onlyStarred ? 'No starred entries in this note' : 'No entries in this note yet'}
@@ -896,7 +938,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 return (
                   <React.Fragment key={row.id}>
                     <tr className="group/seg border-y border-slate-200 bg-slate-50/80">
-                      <td colSpan={4} className="px-4 py-2">
+                      <td colSpan={visibleColCount} className="px-4 py-2">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <span className="font-mono-tabular text-xs font-medium text-slate-400">
@@ -946,7 +988,13 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                             <button
                               type="button"
                               aria-label={`Delete section ${row.title || row.segmentIndex}`}
-                              onClick={() => onDeleteSegment(row.id)}
+                              onClick={() =>
+                                onRequestDeleteSegment({
+                                  id: row.id,
+                                  title: row.title,
+                                  segmentIndex: row.segmentIndex,
+                                })
+                              }
                               className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -963,6 +1011,18 @@ export const NoteTable: React.FC<NoteTableProps> = ({
               const { entry, displayIndex } = row;
               const isSelected = selectedIds.has(entry.id);
               const isPressing = pressingRowId === entry.id;
+              const selectionCheckbox = (
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded transition-colors ${
+                    isSelected
+                      ? 'border-2 border-blue-700 bg-blue-100 text-slate-950'
+                      : 'border border-slate-500 bg-white'
+                  }`}
+                >
+                  {isSelected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                </span>
+              );
 
               return (
                 <React.Fragment key={entry.id}>
@@ -984,24 +1044,83 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                     } ${isMultiSelectMode ? 'cursor-pointer select-none' : ''}`}
                   >
                     {/* Column 1: # + Insert Below Row affordance */}
-                    <td className="px-1 py-2 text-center align-middle md:px-3 md:py-2.5">
-                      <div className="inline-flex items-center justify-center gap-0.5 md:gap-1.5">
-                        {isMultiSelectMode && (
-                          <span
-                            aria-hidden="true"
-                            className={`inline-flex h-4 w-4 items-center justify-center rounded border ${
-                              isSelected
-                                ? 'border-blue-600 bg-blue-600 text-white'
-                                : 'border-slate-300 bg-white'
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
+                    {showIndexCol && (
+                      <td className="px-1 py-2 text-center align-middle md:px-3 md:py-2.5">
+                        <div className="inline-flex items-center justify-center gap-0.5 md:gap-1.5">
+                          {isMultiSelectMode && selectionCheckbox}
+                          <span className="font-mono-tabular text-xs font-medium text-slate-500">
+                            {displayIndex}
                           </span>
-                        )}
-                        <span className="font-mono-tabular text-xs font-medium text-slate-500">
-                          {displayIndex}
-                        </span>
-                        {!isMultiSelectMode && (
+                          {!isMultiSelectMode && (
+                            <button
+                              type="button"
+                              data-no-longpress="true"
+                              title="Insert below this row"
+                              aria-label={`Insert below row ${displayIndex}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openInlineInsert(entry.id);
+                              }}
+                              className="rounded p-0.5 text-slate-400 opacity-75 transition-opacity hover:bg-blue-50 hover:text-blue-600 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+
+                    {/* Column 2: Star */}
+                    {showStarCol && (
+                      <td className="px-1 py-2 text-center align-middle md:px-3 md:py-2.5">
+                        <button
+                          type="button"
+                          data-no-longpress="true"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleStar(entry.id);
+                          }}
+                          aria-label={
+                            entry.starred
+                              ? `Unstar row ${displayIndex}`
+                              : `Star row ${displayIndex}`
+                          }
+                          aria-pressed={entry.starred}
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                            entry.starred
+                              ? 'text-amber-500 hover:bg-amber-50'
+                              : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
+                          }`}
+                        >
+                          <Star
+                            className="h-4 w-4"
+                            fill={entry.starred ? 'currentColor' : 'none'}
+                          />
+                        </button>
+                      </td>
+                    )}
+
+                    {/* Column 3: Lang 1 */}
+                    <td className="px-1.5 py-2 align-middle md:px-4">
+                      {!showIndexCol && isMultiSelectMode ? (
+                        <div className="flex min-w-0 items-center gap-2">
+                          {selectionCheckbox}
+                          <div className="min-w-0 flex-1">
+                            {renderLanguageCell(entry, 'lang1', displayIndex)}
+                          </div>
+                        </div>
+                      ) : (
+                        renderLanguageCell(entry, 'lang1', displayIndex)
+                      )}
+                    </td>
+
+                    {/* Column 4: Lang 2 */}
+                    <td className="px-1.5 py-2 align-middle md:px-4">
+                      {!showIndexCol && !isMultiSelectMode ? (
+                        <div className="flex min-w-0 items-start gap-1">
+                          <div className="min-w-0 flex-1">
+                            {renderLanguageCell(entry, 'lang2', displayIndex)}
+                          </div>
                           <button
                             type="button"
                             data-no-longpress="true"
@@ -1011,50 +1130,14 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                               e.stopPropagation();
                               openInlineInsert(entry.id);
                             }}
-                            className="rounded p-0.5 text-slate-400 opacity-75 transition-opacity hover:bg-blue-50 hover:text-blue-600 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
+                            className="mt-1.5 shrink-0 rounded p-0.5 text-slate-400 opacity-75 transition-opacity hover:bg-blue-50 hover:text-blue-600 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Column 2: Star */}
-                    <td className="px-1 py-2 text-center align-middle md:px-3 md:py-2.5">
-                      <button
-                        type="button"
-                        data-no-longpress="true"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleStar(entry.id);
-                        }}
-                        aria-label={
-                          entry.starred
-                            ? `Unstar row ${displayIndex}`
-                            : `Star row ${displayIndex}`
-                        }
-                        aria-pressed={entry.starred}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                          entry.starred
-                            ? 'text-amber-500 hover:bg-amber-50'
-                            : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
-                        }`}
-                      >
-                        <Star
-                          className="h-4 w-4"
-                          fill={entry.starred ? 'currentColor' : 'none'}
-                        />
-                      </button>
-                    </td>
-
-                    {/* Column 3: Lang 1 */}
-                    <td className="px-1.5 py-2 align-middle md:px-4">
-                      {renderLanguageCell(entry, 'lang1', displayIndex)}
-                    </td>
-
-                    {/* Column 4: Lang 2 */}
-                    <td className="px-1.5 py-2 align-middle md:px-4">
-                      {renderLanguageCell(entry, 'lang2', displayIndex)}
+                        </div>
+                      ) : (
+                        renderLanguageCell(entry, 'lang2', displayIndex)
+                      )}
                     </td>
                   </tr>
                   {inlineInsertAnchor === entry.id && renderInlineInsertRow()}

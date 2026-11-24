@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   clampColumnWidth,
+  DEFAULT_COLUMN_VISIBILITY,
+  getVisibleColumnCount,
   MAX_COLUMN_WIDTH,
   MIN_COLUMN_WIDTHS,
   resizeColumnWidth,
@@ -23,3 +25,11 @@ test('resizeColumnWidth updates only the dragged column cleanly', () => {
   const clamped = resizeColumnWidth(initial, 'index', 96, -100);
   assert.equal(clamped.index, MIN_COLUMN_WIDTHS.index);
 });
+
+test('getVisibleColumnCount accounts for index and star column toggles', () => {
+  assert.equal(getVisibleColumnCount(DEFAULT_COLUMN_VISIBILITY), 4);
+  assert.equal(getVisibleColumnCount({ index: false, star: true }), 3);
+  assert.equal(getVisibleColumnCount({ index: true, star: false }), 3);
+  assert.equal(getVisibleColumnCount({ index: false, star: false }), 2);
+});
+
