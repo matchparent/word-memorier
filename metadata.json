@@ -1,0 +1,6 @@
+{
+  "name": "词句笔记 · 语料记忆本",
+  "description": "支持遮罩背诵、分段管理、时间戳随机乱序、长按多选与三级文件目录的词句记忆笔记工具",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
