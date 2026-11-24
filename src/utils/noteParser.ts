@@ -50,19 +50,23 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
     const trimmed = line.trim();
     if (trimmed.startsWith('#')) {
       const content = trimmed.slice(1).trim();
-      if (content.startsWith('笔记名称:')) {
-        meta.noteName = content.slice('笔记名称:'.length).trim();
-      } else if (content.startsWith('所属语言:')) {
-        meta.languageName = content.slice('所属语言:'.length).trim();
-      } else if (content.startsWith('语言列:')) {
+      if (content.startsWith('Note:') || content.startsWith('笔记名称:')) {
+        const prefix = content.startsWith('Note:') ? 'Note:' : '笔记名称:';
+        meta.noteName = content.slice(prefix.length).trim();
+      } else if (content.startsWith('Language:') || content.startsWith('所属语言:')) {
+        const prefix = content.startsWith('Language:') ? 'Language:' : '所属语言:';
+        meta.languageName = content.slice(prefix.length).trim();
+      } else if (content.startsWith('Columns:') || content.startsWith('语言列:')) {
+        const prefix = content.startsWith('Columns:') ? 'Columns:' : '语言列:';
         const parts = content
-          .slice('语言列:'.length)
+          .slice(prefix.length)
           .split('|')
           .map((s) => s.trim());
         if (parts[0]) meta.lang1Label = parts[0];
         if (parts[1]) meta.lang2Label = parts[1];
-      } else if (content.startsWith('收藏索引:')) {
-        const rawIdx = content.slice('收藏索引:'.length).trim();
+      } else if (content.startsWith('Starred:') || content.startsWith('收藏索引:')) {
+        const prefix = content.startsWith('Starred:') ? 'Starred:' : '收藏索引:';
+        const rawIdx = content.slice(prefix.length).trim();
         if (rawIdx) {
           for (const part of rawIdx.split(',')) {
             const num = Number.parseInt(part.trim(), 10);
@@ -79,7 +83,7 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
 
   const body = bodyLines.join('\n').trim();
   if (!body) {
-    return { items: [], errors: ['输入内容为空，请粘贴至少一条数据或分段 []'], meta };
+    return { items: [], errors: ['Input is empty. Please paste at least one entry or section [].'], meta };
   }
 
   let i = 0;
@@ -123,7 +127,7 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
 
     if (body[i] !== '[') {
       const snippet = body.slice(i, Math.min(len, i + 24)).replace(/\n/g, ' ');
-      errors.push(`语法错误：预期 "["，但在 "${snippet}" 处遇到意外字符`);
+      errors.push(`Syntax error: expected "[" but found unexpected text near "${snippet}"`);
       // Attempt recovery to next '['
       const nextBracket = body.indexOf('[', i + 1);
       if (nextBracket === -1) break;
@@ -141,16 +145,16 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
       continue;
     }
 
-    // Quoted pair ["语言1":"语言2"]
+    // Quoted pair ["Lang 1":"Lang 2"]
     if (i < len && body[i] === '"') {
       const lang1 = readQuoted();
       if (lang1 === null) {
-        errors.push('语法错误：语言1 引号未闭合');
+        errors.push('Syntax error: unterminated quote in Language 1');
         break;
       }
       while (i < len && /\s/.test(body[i])) i++;
       if (i >= len || (body[i] !== ':' && body[i] !== '：')) {
-        errors.push(`语法错误："${lang1}" 后缺少冒号 ":"`);
+        errors.push(`Syntax error: missing colon ":" after "${lang1}"`);
         const nextClose = body.indexOf(']', i);
         if (nextClose === -1) break;
         i = nextClose + 1;
@@ -161,12 +165,12 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
 
       const lang2 = readQuoted();
       if (lang2 === null) {
-        errors.push(`语法错误："${lang1}" 对应的语言2 缺少有效引号或未闭合`);
+        errors.push(`Syntax error: missing or unterminated quote for Language 2 after "${lang1}"`);
         break;
       }
       while (i < len && /\s/.test(body[i])) i++;
       if (i >= len || body[i] !== ']') {
-        errors.push(`语法错误：["${lang1}":"${lang2}" 缺少闭合括号 "]"`);
+        errors.push(`Syntax error: missing closing bracket "]" for ["${lang1}":"${lang2}"`);
         const nextClose = body.indexOf(']', i);
         if (nextClose === -1) break;
         i = nextClose + 1;
@@ -179,10 +183,10 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
       continue;
     }
 
-    // Named segment like [第一段] (no quotes inside)
+    // Named segment like [Section 1] (no quotes inside)
     const closeIdx = body.indexOf(']', i);
     if (closeIdx === -1) {
-      errors.push('语法错误：分段括号 "[" 未闭合');
+      errors.push('Syntax error: unclosed section bracket "["');
       break;
     }
     const segTitle = body.slice(i, closeIdx).trim();
@@ -191,7 +195,7 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
   }
 
   if (items.length === 0 && errors.length === 0) {
-    errors.push('未解析到有效的数据行或分段 []');
+    errors.push('No valid entries or sections [] could be parsed');
   }
 
   return { items, errors, meta };
@@ -200,13 +204,13 @@ export function parseNoteImportText(rawText: string): ParsedNoteData {
 /**
  * Serializes a NoteFile into clean exportable .txt format.
  * Preserves metadata & starred indices in # comment headers,
- * and writes standard ["语言1":"语言2"],[] tokens in the body.
+ * and writes standard ["Lang 1":"Lang 2"],[] tokens in the body.
  */
 export function serializeNoteToTxt(note: NoteFile, languageName?: string): string {
   const headerLines: string[] = [
-    `# 笔记名称: ${note.name}`,
-    ...(languageName ? [`# 所属语言: ${languageName}`] : []),
-    `# 语言列: ${note.lang1Label} | ${note.lang2Label}`,
+    `# Note: ${note.name}`,
+    ...(languageName ? [`# Language: ${languageName}`] : []),
+    `# Columns: ${note.lang1Label} | ${note.lang2Label}`,
   ];
 
   const starredIndices: number[] = [];
@@ -226,7 +230,7 @@ export function serializeNoteToTxt(note: NoteFile, languageName?: string): strin
   }
 
   if (starredIndices.length > 0) {
-    headerLines.push(`# 收藏索引: ${starredIndices.join(',')}`);
+    headerLines.push(`# Starred: ${starredIndices.join(',')}`);
   }
 
   const bodyLines = tokens.map((tok, idx) => (idx < tokens.length - 1 ? `${tok},` : tok));
@@ -237,7 +241,7 @@ export function serializeNoteToTxt(note: NoteFile, languageName?: string): strin
  * Resolves filename conflicts on import by appending "(1)", "(2)", etc.
  */
 export function resolveUniqueFileName(desiredName: string, existingNames: string[]): string {
-  const base = desiredName.trim() || '未命名笔记';
+  const base = desiredName.trim() || 'Untitled Note';
   const existing = new Set(existingNames.map((n) => n.trim()));
   if (!existing.has(base)) {
     return base;

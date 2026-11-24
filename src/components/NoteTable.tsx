@@ -335,8 +335,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label={`拖拽调整${label}列宽`}
-      title="拖拽调整列宽（双击恢复默认）"
+      aria-label={`Resize ${label} column`}
+      title="Drag to resize column (double-click to reset)"
       onPointerDown={(e) => startColumnResize(key, e)}
       onDoubleClick={(e) => {
         e.stopPropagation();
@@ -377,7 +377,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     const l1 = inlineLang1.trim();
     const l2 = inlineLang2.trim();
     if (!l1 && !l2) return;
-    const newId = onInsertEntryAt(l1 || '（未填写）', l2 || '（未填写）', inlineInsertAnchor);
+    const newId = onInsertEntryAt(l1 || '(Empty)', l2 || '(Empty)', inlineInsertAnchor);
     setInlineInsertAnchor(newId);
     setInlineLang1('');
     setInlineLang2('');
@@ -406,7 +406,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
         </span>
       </td>
       <td className="px-3 py-2 text-center align-middle">
-        <span className="text-[11px] font-medium text-blue-700">插入位置</span>
+        <span className="text-[11px] font-medium text-blue-700">New Row</span>
       </td>
       <td className="px-4 py-2 align-middle">
         <input
@@ -422,8 +422,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
               closeInlineInsert();
             }
           }}
-          aria-label={`在此位置插入 ${note.lang1Label}`}
-          placeholder={`输入 ${note.lang1Label}（语言1）...`}
+          aria-label={`Insert ${note.lang1Label} here`}
+          placeholder={`Enter ${note.lang1Label} (Lang 1)...`}
           className="w-full rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
         />
       </td>
@@ -441,8 +441,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 closeInlineInsert();
               }
             }}
-            aria-label={`在此位置插入 ${note.lang2Label}`}
-            placeholder={`输入 ${note.lang2Label}（语言2）...`}
+            aria-label={`Insert ${note.lang2Label} here`}
+            placeholder={`Enter ${note.lang2Label} (Lang 2)...`}
             className="min-w-[140px] flex-1 rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
           />
           <button
@@ -451,19 +451,19 @@ export const NoteTable: React.FC<NoteTableProps> = ({
             onClick={submitInlineInsert}
             className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-45 whitespace-nowrap shrink-0"
           >
-            确认插入
+            Add Row
           </button>
           <button
             type="button"
             onClick={insertInlineSegment}
-            title="在此位置插入分段 []"
+            title="Insert section [] here"
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
           >
-            + 分段 []
+            + Section []
           </button>
           <button
             type="button"
-            aria-label="取消插入"
+            aria-label="Cancel insert"
             onClick={closeInlineInsert}
             className="rounded-md p-1.5 text-slate-500 hover:bg-blue-100 hover:text-slate-800"
           >
@@ -504,7 +504,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
               setEditingCell(null);
             }
           }}
-          aria-label={`编辑第 ${displayIndex} 行 ${colTitle}`}
+          aria-label={`Edit row ${displayIndex} ${colTitle}`}
           className="w-full resize-none rounded-md border border-blue-500 bg-white px-2.5 py-1.5 text-sm leading-relaxed text-slate-900 outline-none ring-2 ring-blue-500/15"
         />
       );
@@ -523,12 +523,12 @@ export const NoteTable: React.FC<NoteTableProps> = ({
               return next;
             });
           }}
-          aria-label={`显示第 ${displayIndex} 行 ${colTitle}`}
+          aria-label={`Reveal row ${displayIndex} ${colTitle}`}
           className="group/mask flex min-h-9 w-full items-center justify-between rounded-md border border-dashed border-slate-200 bg-slate-100/90 px-3 py-1.5 text-left text-xs text-slate-400 transition-colors hover:border-slate-300 hover:bg-slate-200/70 hover:text-slate-600"
         >
           <span className="select-none tracking-widest">••••••</span>
           <span className="opacity-0 transition-opacity group-hover/mask:opacity-100">
-            点击显示
+            Click to reveal
           </span>
         </button>
       );
@@ -543,7 +543,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
             e.stopPropagation();
             setEditingCell({ id: entry.id, field, value: textValue });
           }}
-          aria-label={`编辑第 ${displayIndex} 行 ${colTitle}: ${textValue}`}
+          aria-label={`Edit row ${displayIndex} ${colTitle}: ${textValue}`}
           className="min-h-9 flex-1 rounded-md px-2 py-1.5 text-left text-sm leading-relaxed text-slate-900 transition-colors hover:bg-slate-100/80 whitespace-pre-wrap break-words"
         >
           {textValue}
@@ -553,8 +553,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
           <button
             type="button"
             data-no-longpress="true"
-            title="重新隐藏"
-            aria-label={`重新隐藏第 ${displayIndex} 行 ${colTitle}`}
+            title="Hide again"
+            aria-label={`Hide row ${displayIndex} ${colTitle}`}
             onClick={(e) => {
               e.stopPropagation();
               setRevealedCells((prev) => {
@@ -593,7 +593,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
           </colgroup>
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur-xs">
             <tr className="text-xs font-semibold text-slate-600">
-              {/* Column 1: 序号 + Insert at Top trigger */}
+              {/* Column 1: # + Insert at Top trigger */}
               <th
                 ref={(el) => {
                   thRefs.current.index = el;
@@ -602,12 +602,12 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 className="relative px-3 py-2.5 text-center"
               >
                 <div className="inline-flex items-center justify-center gap-1">
-                  <span>序号</span>
+                  <span>#</span>
                   {!isMultiSelectMode && (
                     <button
                       type="button"
-                      title="在表格最上方插入"
-                      aria-label="在开头插入行"
+                      title="Insert at top of table"
+                      aria-label="Insert row at top"
                       onClick={() => openInlineInsert(INSERT_AT_TOP)}
                       className="rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
                     >
@@ -615,33 +615,34 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                     </button>
                   )}
                 </div>
-                {renderResizeHandle('index', '序号')}
+                {renderResizeHandle('index', 'Index')}
               </th>
 
-              {/* Column 2: 收藏 + Top Checkbox */}
+              {/* Column 2: Star + Single-Row Filter Checkbox */}
               <th
                 ref={(el) => {
                   thRefs.current.star = el;
                 }}
                 scope="col"
-                className="relative px-3 py-2.5"
+                className="relative px-3 py-2.5 text-center"
               >
-                <div className="flex flex-col items-center gap-1">
-                  <span>收藏</span>
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-normal text-slate-500 hover:text-slate-800 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={onlyStarred}
-                      onChange={(e) => onToggleOnlyStarred(e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-slate-300 accent-amber-600"
-                    />
-                    仅看收藏
-                  </label>
-                </div>
-                {renderResizeHandle('star', '收藏')}
+                <label
+                  title="Show starred entries only"
+                  className="inline-flex cursor-pointer items-center justify-center gap-1.5 font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap"
+                >
+                  <input
+                    type="checkbox"
+                    checked={onlyStarred}
+                    onChange={(e) => onToggleOnlyStarred(e.target.checked)}
+                    aria-label="Star"
+                    className="h-3.5 w-3.5 rounded border-slate-300 accent-amber-600"
+                  />
+                  <span>Star</span>
+                </label>
+                {renderResizeHandle('star', 'Star')}
               </th>
 
-              {/* Column 3: 语言1 + Top Show/Hide Checkbox */}
+              {/* Column 3: Lang 1 + Top Show/Hide Checkbox */}
               <th
                 ref={(el) => {
                   thRefs.current.lang1 = el;
@@ -671,10 +672,10 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           setColLabelDraft(note.lang1Label);
                           setEditingColLabel('lang1');
                         }}
-                        title="点击修改语言1列标题"
+                        title="Click to rename Language 1 column"
                         className="truncate hover:text-blue-600"
                       >
-                        语言1（{note.lang1Label}）
+                        Lang 1 ({note.lang1Label})
                       </button>
                     )}
                   </div>
@@ -686,13 +687,13 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                       onChange={(e) => handleToggleColumn1(e.target.checked)}
                       className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
                     />
-                    显示文字
+                    Show text
                   </label>
                 </div>
-                {renderResizeHandle('lang1', '语言1')}
+                {renderResizeHandle('lang1', 'Language 1')}
               </th>
 
-              {/* Column 4: 语言2 + Top Show/Hide Checkbox + Show Header button if hidden */}
+              {/* Column 4: Lang 2 + Top Show/Hide Checkbox + Show Header button if hidden */}
               <th
                 ref={(el) => {
                   thRefs.current.lang2 = el;
@@ -722,10 +723,10 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           setColLabelDraft(note.lang2Label);
                           setEditingColLabel('lang2');
                         }}
-                        title="点击修改语言2列标题"
+                        title="Click to rename Language 2 column"
                         className="truncate hover:text-blue-600"
                       >
-                        语言2（{note.lang2Label}）
+                        Lang 2 ({note.lang2Label})
                       </button>
                     )}
                   </div>
@@ -738,23 +739,23 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                         onChange={(e) => handleToggleColumn2(e.target.checked)}
                         className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
                       />
-                      显示文字
+                      Show text
                     </label>
                     {isHeaderHidden && (
                       <button
                         type="button"
-                        title="显示表头以上部分"
-                        aria-label="显示顶栏"
+                        title="Show top toolbar"
+                        aria-label="Show header"
                         onClick={onShowHeader}
                         className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 whitespace-nowrap shrink-0"
                       >
                         <PanelTopOpen className="h-3.5 w-3.5 text-slate-500" />
-                        显示顶栏
+                        Show Header
                       </button>
                     )}
                   </div>
                 </div>
-                {renderResizeHandle('lang2', '语言2')}
+                {renderResizeHandle('lang2', 'Language 2')}
               </th>
             </tr>
           </thead>
@@ -767,12 +768,12 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 <td colSpan={4} className="px-6 py-16 text-center">
                   <div className="mx-auto max-w-md space-y-3">
                     <p className="text-sm font-medium text-slate-700">
-                      {onlyStarred ? '当前笔记中没有已收藏的词句' : '当前笔记还没有任何词句记录'}
+                      {onlyStarred ? 'No starred entries in this note' : 'No entries in this note yet'}
                     </p>
                     <p className="text-xs text-slate-500">
                       {onlyStarred
-                        ? '取消勾选顶端的“仅看收藏”，或在行内点击星标收藏需要重点记忆的内容。'
-                        : '可点击表头或下方按钮新增行、插入分段 []，或通过粘贴批量导入数据。'}
+                        ? 'Uncheck "Star" in the header, or click a star icon to bookmark entries.'
+                        : 'Use + in the table header or the buttons below to add rows, insert sections [], or paste import.'}
                     </p>
                     {!onlyStarred && (
                       <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
@@ -782,7 +783,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-blue-700"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          新增第一行
+                          Add First Row
                         </button>
                         <button
                           type="button"
@@ -790,7 +791,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
                           <SplitSquareVertical className="h-3.5 w-3.5 text-slate-500" />
-                          添加分段 []
+                          Add Section []
                         </button>
                         <button
                           type="button"
@@ -798,7 +799,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                         >
                           <ClipboardPaste className="h-3.5 w-3.5 text-slate-500" />
-                          粘贴导入
+                          Paste Import
                         </button>
                       </div>
                     )}
@@ -832,7 +833,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                                   if (e.key === 'Enter') commitSegmentEdit();
                                   if (e.key === 'Escape') setEditingSegment(null);
                                 }}
-                                placeholder={`第 ${row.segmentIndex} 段标题（可留空）`}
+                                placeholder={`Section ${row.segmentIndex} title (optional)`}
                                 className="w-64 rounded border border-blue-400 bg-white px-2 py-0.5 text-xs font-medium text-slate-800 outline-none"
                               />
                             ) : (
@@ -843,7 +844,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                                 }
                                 className="text-xs font-semibold text-slate-600 hover:text-blue-600"
                               >
-                                {row.title || `第 ${row.segmentIndex} 段`}
+                                {row.title || `Section ${row.segmentIndex}`}
                               </button>
                             )}
                           </div>
@@ -852,8 +853,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                             {!isMultiSelectMode && (
                               <button
                                 type="button"
-                                title="在此分段下方插入行"
-                                aria-label={`在分段 ${row.title || row.segmentIndex} 下方插入`}
+                                title="Insert row below this section"
+                                aria-label={`Insert below section ${row.title || row.segmentIndex}`}
                                 onClick={() => openInlineInsert(row.id)}
                                 className="rounded p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
                               >
@@ -862,7 +863,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                             )}
                             <button
                               type="button"
-                              aria-label={`删除分段 ${row.title || row.segmentIndex}`}
+                              aria-label={`Delete section ${row.title || row.segmentIndex}`}
                               onClick={() => onDeleteSegment(row.id)}
                               className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
                             >
@@ -922,8 +923,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           <button
                             type="button"
                             data-no-longpress="true"
-                            title="在此行下方插入"
-                            aria-label={`在第 ${displayIndex} 行下方插入`}
+                            title="Insert below this row"
+                            aria-label={`Insert below row ${displayIndex}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               openInlineInsert(entry.id);
@@ -936,7 +937,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Column 2: 收藏 */}
+                    {/* Column 2: Star */}
                     <td className="px-3 py-2.5 text-center align-middle">
                       <button
                         type="button"
@@ -947,8 +948,8 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                         }}
                         aria-label={
                           entry.starred
-                            ? `取消收藏第 ${displayIndex} 行`
-                            : `收藏第 ${displayIndex} 行`
+                            ? `Unstar row ${displayIndex}`
+                            : `Star row ${displayIndex}`
                         }
                         aria-pressed={entry.starred}
                         className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${

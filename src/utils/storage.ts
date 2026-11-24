@@ -10,17 +10,17 @@ export function createDefaultWorkspace(): NotebookWorkspace {
       {
         id: 'lang_en',
         type: 'language',
-        name: '英语',
+        name: 'English',
         children: [
           {
             id: 'note_en_ielts',
             type: 'note',
-            name: '核心高频词句',
+            name: 'Core Vocabulary & Sentences',
             lang1Label: 'English',
-            lang2Label: '中文释义',
+            lang2Label: 'Chinese',
             updatedAt: now,
             items: [
-              { id: 'seg_en_1', kind: 'segment', title: '第一部分 · 常用核心词汇' },
+              { id: 'seg_en_1', kind: 'segment', title: 'Part 1 · Core Vocabulary' },
               {
                 id: 'e_en_1',
                 kind: 'entry',
@@ -49,7 +49,7 @@ export function createDefaultWorkspace(): NotebookWorkspace {
                 lang2: '务实的；实用主义的',
                 starred: false,
               },
-              { id: 'seg_en_2', kind: 'segment', title: '第二部分 · 实用例句' },
+              { id: 'seg_en_2', kind: 'segment', title: 'Part 2 · Practical Sentences' },
               {
                 id: 'e_en_5',
                 kind: 'entry',
@@ -69,14 +69,14 @@ export function createDefaultWorkspace(): NotebookWorkspace {
           {
             id: 'folder_en_reading',
             type: 'folder',
-            name: '专项分类',
+            name: 'Focused Topics',
             children: [
               {
                 id: 'note_en_academic',
                 type: 'note',
-                name: '学术表达句型',
+                name: 'Academic Expressions',
                 lang1Label: 'English',
-                lang2Label: '中文释义',
+                lang2Label: 'Chinese',
                 updatedAt: now - 3600_000,
                 items: [
                   {
@@ -102,14 +102,14 @@ export function createDefaultWorkspace(): NotebookWorkspace {
       {
         id: 'lang_ja',
         type: 'language',
-        name: '日语',
+        name: 'Japanese',
         children: [
           {
             id: 'note_ja_daily',
             type: 'note',
-            name: '日常高频表达',
-            lang1Label: '日本語',
-            lang2Label: '中文释义',
+            name: 'Daily Expressions',
+            lang1Label: 'Japanese',
+            lang2Label: 'Chinese',
             updatedAt: now - 7200_000,
             items: [
               {
@@ -141,6 +141,76 @@ export function createDefaultWorkspace(): NotebookWorkspace {
   };
 }
 
+function migrateNoteDefaults(note: NotebookWorkspace['languages'][number]['children'][number]) {
+  if (note.type !== 'note') return note;
+  let nextName = note.name;
+  let nextLang1 = note.lang1Label;
+  let nextLang2 = note.lang2Label;
+
+  if (note.id === 'note_en_ielts' && nextName === '核心高频词句') {
+    nextName = 'Core Vocabulary & Sentences';
+  } else if (note.id === 'note_en_academic' && nextName === '学术表达句型') {
+    nextName = 'Academic Expressions';
+  } else if (note.id === 'note_ja_daily' && nextName === '日常高频表达') {
+    nextName = 'Daily Expressions';
+  }
+
+  if (nextLang1 === '语言1') nextLang1 = 'Language 1';
+  if (nextLang1 === '日本語') nextLang1 = 'Japanese';
+  if (nextLang2 === '语言2') nextLang2 = 'Language 2';
+  if (nextLang2 === '中文释义') nextLang2 = 'Chinese';
+
+  const nextItems = note.items.map((item) => {
+    if (item.kind !== 'segment') return item;
+    if (item.id === 'seg_en_1' && item.title === '第一部分 · 常用核心词汇') {
+      return { ...item, title: 'Part 1 · Core Vocabulary' };
+    }
+    if (item.id === 'seg_en_2' && item.title === '第二部分 · 实用例句') {
+      return { ...item, title: 'Part 2 · Practical Sentences' };
+    }
+    return item;
+  });
+
+  return {
+    ...note,
+    name: nextName,
+    lang1Label: nextLang1,
+    lang2Label: nextLang2,
+    items: nextItems,
+  };
+}
+
+function migrateLegacyDefaultLabels(ws: NotebookWorkspace): NotebookWorkspace {
+  return {
+    ...ws,
+    languages: ws.languages.map((lang) => {
+      let langName = lang.name;
+      if (lang.id === 'lang_en' && langName === '英语') langName = 'English';
+      if (lang.id === 'lang_ja' && langName === '日语') langName = 'Japanese';
+      return {
+        ...lang,
+        name: langName,
+        children: lang.children.map((child) => {
+          if (child.type === 'note') {
+            return migrateNoteDefaults(child);
+          }
+          let folderName = child.name;
+          if (child.id === 'folder_en_reading' && folderName === '专项分类') {
+            folderName = 'Focused Topics';
+          }
+          return {
+            ...child,
+            name: folderName,
+            children: child.children.map((sub) =>
+              migrateNoteDefaults(sub) as typeof sub,
+            ),
+          };
+        }),
+      };
+    }),
+  };
+}
+
 export function loadWorkspace(): NotebookWorkspace {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -151,7 +221,7 @@ export function loadWorkspace(): NotebookWorkspace {
     if (!parsed || !Array.isArray(parsed.languages)) {
       return createDefaultWorkspace();
     }
-    return parsed;
+    return migrateLegacyDefaultLabels(parsed);
   } catch {
     return createDefaultWorkspace();
   }

@@ -90,18 +90,18 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
           {!isDesktopSidebarOpen && (
             <button
               type="button"
-              title="显示文件目录"
-              aria-label="显示文件目录"
+              title="Show directory"
+              aria-label="Show directory"
               onClick={onShowDesktopSidebar}
               className="hidden items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 md:inline-flex whitespace-nowrap shrink-0"
             >
               <PanelLeftOpen className="h-4 w-4 text-slate-500" />
-              目录
+              Directory
             </button>
           )}
           <button
             type="button"
-            aria-label="打开笔记目录"
+            aria-label="Open note directory"
             onClick={onOpenMobileSidebar}
             className="rounded-md border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-100 md:hidden"
           >
@@ -142,7 +142,7 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
                     setTitleDraft(note.name);
                     setIsEditingTitle(true);
                   }}
-                  title="点击重命名笔记"
+                  title="Click to rename note"
                   className="inline-flex items-center gap-1.5 font-display text-base font-semibold tracking-tight text-slate-900 hover:text-blue-600"
                 >
                   <span className="truncate">{note.name}</span>
@@ -160,7 +160,7 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
           >
             <ClipboardPaste className="h-3.5 w-3.5 text-slate-500" />
-            粘贴导入
+            Paste Import
           </button>
           <button
             type="button"
@@ -168,7 +168,7 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
           >
             <Upload className="h-3.5 w-3.5 text-slate-500" />
-            导入 .txt
+            Import .txt
           </button>
           <button
             type="button"
@@ -176,17 +176,17 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
             className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 whitespace-nowrap shrink-0"
           >
             <Download className="h-3.5 w-3.5" />
-            导出 .txt
+            Export .txt
           </button>
           <button
             type="button"
-            title="隐藏表头以上区域"
-            aria-label="隐藏顶栏"
+            title="Hide top toolbar"
+            aria-label="Hide header"
             onClick={onHideHeader}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 whitespace-nowrap shrink-0"
           >
             <PanelTopClose className="h-3.5 w-3.5" />
-            隐藏顶栏
+            Hide Header
           </button>
         </div>
       </div>
@@ -208,7 +208,7 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
           <div className="flex flex-wrap items-center gap-3">
             <div
               role="group"
-              aria-label="展示顺序"
+              aria-label="Display order"
               className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5"
             >
               <button
@@ -222,7 +222,7 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
                 }`}
               >
                 <ListOrdered className="h-3.5 w-3.5" />
-                顺序展示
+                Sequential
               </button>
               <button
                 type="button"
@@ -235,7 +235,7 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
                 }`}
               >
                 <Shuffle className="h-3.5 w-3.5" />
-                随机展示
+                Random
               </button>
             </div>
 
@@ -247,10 +247,10 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
                   className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
                 >
                   <RefreshCw className="h-3 w-3" />
-                  重新随机
+                  Reshuffle
                 </button>
                 <span className="font-mono-tabular text-slate-400">
-                  时间种子 {randomSeed}
+                  Seed {randomSeed}
                 </span>
               </div>
             )}
@@ -258,18 +258,18 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
             <span>
-              共 <span className="font-mono-tabular font-medium text-slate-700">{totalEntries}</span> 条
+              Total <span className="font-mono-tabular font-medium text-slate-700">{totalEntries}</span>
             </span>
             <span aria-hidden="true">·</span>
             <span>
-              已收藏{' '}
-              <span className="font-mono-tabular font-medium text-amber-700">{starredEntries}</span> 条
+              Starred{' '}
+              <span className="font-mono-tabular font-medium text-amber-700">{starredEntries}</span>
             </span>
             <span className="hidden lg:inline" aria-hidden="true">
               ·
             </span>
             <span className="hidden lg:inline text-slate-400">
-              长按行进入多选 · 点击隐藏文字可单独查看 · 点击文字可编辑
+              Long-press row to select · Click masked cell to reveal · Click text to edit
             </span>
           </div>
         </div>

@@ -76,7 +76,7 @@ test('serializeNoteToTxt and parseNoteImportText preserve entries, segments, and
   const txt = serializeNoteToTxt(note, '英语');
   assert.ok(txt.includes('["apple":"苹果"],'));
   assert.ok(txt.includes('[],'));
-  assert.ok(txt.includes('# 收藏索引: 0,2'));
+  assert.ok(txt.includes('# Starred: 0,2'));
 
   const reparsed = parseNoteImportText(txt);
   assert.equal(reparsed.errors.length, 0);
@@ -87,6 +87,14 @@ test('serializeNoteToTxt and parseNoteImportText preserve entries, segments, and
   assert.equal(reparsed.items[1].kind, 'segment');
   assert.equal(reparsed.items[2].kind === 'entry' && reparsed.items[2].starred, false);
   assert.equal(reparsed.items[3].kind === 'entry' && reparsed.items[3].starred, true);
+
+  // Backward compatibility: legacy Chinese metadata headers still parse cleanly
+  const legacyTxt = `# 笔记名称: LegacyNote\n# 所属语言: English\n# 语言列: English | Chinese\n# 收藏索引: 1\n["a":"甲"],\n["b":"乙"]`;
+  const legacyParsed = parseNoteImportText(legacyTxt);
+  assert.equal(legacyParsed.errors.length, 0);
+  assert.equal(legacyParsed.meta?.noteName, 'LegacyNote');
+  assert.equal(legacyParsed.meta?.languageName, 'English');
+  assert.equal(legacyParsed.items[1].kind === 'entry' && legacyParsed.items[1].starred, true);
 });
 
 test('resolveUniqueFileName appends (1), (2), ... on filename conflicts', () => {

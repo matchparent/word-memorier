@@ -155,11 +155,11 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
         type="submit"
         className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
       >
-        确定
+        Add
       </button>
       <button
         type="button"
-        aria-label="取消新建"
+        aria-label="Cancel creation"
         onClick={() => {
           setCreating(null);
           setNewName('');
@@ -212,8 +212,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
           <div className="flex shrink-0 items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
             <button
               type="button"
-              title="新建笔记（二级）"
-              aria-label={`在 ${lang.name} 下新建笔记`}
+              title="New note (Level 2)"
+              aria-label={`New note under ${lang.name}`}
               onClick={() => {
                 setCreating({ type: 'note', langId: lang.id });
                 setNewName('');
@@ -224,8 +224,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
             </button>
             <button
               type="button"
-              title="新建分类文件夹（二级）"
-              aria-label={`在 ${lang.name} 下新建分类文件夹`}
+              title="New folder (Level 2)"
+              aria-label={`New folder under ${lang.name}`}
               onClick={() => {
                 setCreating({ type: 'folder', langId: lang.id });
                 setNewName('');
@@ -236,8 +236,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
             </button>
             <button
               type="button"
-              title="导入 .txt 到该语言"
-              aria-label={`导入 txt 到 ${lang.name}`}
+              title="Import .txt to this language"
+              aria-label={`Import txt to ${lang.name}`}
               onClick={() => onTriggerImportTxt(lang.id)}
               className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
             >
@@ -245,8 +245,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
             </button>
             <button
               type="button"
-              title="重命名语言"
-              aria-label={`重命名语言 ${lang.name}`}
+              title="Rename language"
+              aria-label={`Rename language ${lang.name}`}
               onClick={() => setRenaming({ type: 'language', id: lang.id, value: lang.name })}
               className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
             >
@@ -254,8 +254,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
             </button>
             <button
               type="button"
-              title="删除语言"
-              aria-label={`删除语言 ${lang.name}`}
+              title="Delete language"
+              aria-label={`Delete language ${lang.name}`}
               onClick={() => onDeleteLanguage(lang.id)}
               className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
             >
@@ -269,13 +269,13 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
             {creating?.type === 'note' &&
               creating.langId === lang.id &&
               !creating.folderId &&
-              renderInlineCreator('输入笔记名称...')}
+              renderInlineCreator('Enter note name...')}
             {creating?.type === 'folder' &&
               creating.langId === lang.id &&
-              renderInlineCreator('输入分类文件夹名称...')}
+              renderInlineCreator('Enter folder name...')}
 
             {lang.children.length === 0 && (
-              <div className="px-2 py-1.5 text-xs text-slate-400">暂无笔记，点击 + 新建</div>
+              <div className="px-2 py-1.5 text-xs text-slate-400">No notes yet. Click + to add</div>
             )}
 
             {lang.children.map((child) => {
@@ -327,8 +327,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                     <div className="flex shrink-0 items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                       <button
                         type="button"
-                        title="导出为 .txt"
-                        aria-label={`导出 ${child.name}`}
+                        title="Export as .txt"
+                        aria-label={`Export ${child.name}`}
                         onClick={() => onExportNote(child.id)}
                         className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
                       >
@@ -336,8 +336,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                       </button>
                       <button
                         type="button"
-                        title="重命名笔记"
-                        aria-label={`重命名笔记 ${child.name}`}
+                        title="Rename note"
+                        aria-label={`Rename note ${child.name}`}
                         onClick={() => setRenaming({ type: 'note', id: child.id, value: child.name })}
                         className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
                       >
@@ -345,8 +345,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                       </button>
                       <button
                         type="button"
-                        title="删除笔记"
-                        aria-label={`删除笔记 ${child.name}`}
+                        title="Delete note"
+                        aria-label={`Delete note ${child.name}`}
                         onClick={() => onDeleteNote(child.id)}
                         className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
                       >
@@ -399,8 +399,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                     <div className="flex shrink-0 items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                       <button
                         type="button"
-                        title="新建笔记（三级）"
-                        aria-label={`在 ${child.name} 下新建笔记`}
+                        title="New note (Level 3)"
+                        aria-label={`New note in ${child.name}`}
                         onClick={() => {
                           setCreating({ type: 'note', langId: lang.id, folderId: child.id });
                           setNewName('');
@@ -411,8 +411,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                       </button>
                       <button
                         type="button"
-                        title="导入 .txt 到该分类"
-                        aria-label={`导入 txt 到 ${child.name}`}
+                        title="Import .txt to this folder"
+                        aria-label={`Import txt to ${child.name}`}
                         onClick={() => onTriggerImportTxt(lang.id, child.id)}
                         className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
                       >
@@ -420,8 +420,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                       </button>
                       <button
                         type="button"
-                        title="重命名分类"
-                        aria-label={`重命名分类 ${child.name}`}
+                        title="Rename folder"
+                        aria-label={`Rename folder ${child.name}`}
                         onClick={() =>
                           setRenaming({
                             type: 'folder',
@@ -436,8 +436,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                       </button>
                       <button
                         type="button"
-                        title="删除分类"
-                        aria-label={`删除分类 ${child.name}`}
+                        title="Delete folder"
+                        aria-label={`Delete folder ${child.name}`}
                         onClick={() => onDeleteFolder(lang.id, child.id)}
                         className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
                       >
@@ -451,10 +451,10 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                       {creating?.type === 'note' &&
                         creating.langId === lang.id &&
                         creating.folderId === child.id &&
-                        renderInlineCreator('输入三级笔记名称...')}
+                        renderInlineCreator('Enter level-3 note name...')}
 
                       {child.children.length === 0 && (
-                        <div className="px-2 py-1 text-xs text-slate-400">空分类</div>
+                        <div className="px-2 py-1 text-xs text-slate-400">Empty folder</div>
                       )}
 
                       {child.children.map((subNote) => {
@@ -508,8 +508,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                             <div className="flex shrink-0 items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                               <button
                                 type="button"
-                                title="导出为 .txt"
-                                aria-label={`导出 ${subNote.name}`}
+                                title="Export as .txt"
+                                aria-label={`Export ${subNote.name}`}
                                 onClick={() => onExportNote(subNote.id)}
                                 className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
                               >
@@ -517,8 +517,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                               </button>
                               <button
                                 type="button"
-                                title="重命名笔记"
-                                aria-label={`重命名笔记 ${subNote.name}`}
+                                title="Rename note"
+                                aria-label={`Rename note ${subNote.name}`}
                                 onClick={() =>
                                   setRenaming({
                                     type: 'note',
@@ -532,8 +532,8 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                               </button>
                               <button
                                 type="button"
-                                title="删除笔记"
-                                aria-label={`删除笔记 ${subNote.name}`}
+                                title="Delete note"
+                                aria-label={`Delete note ${subNote.name}`}
                                 onClick={() => onDeleteNote(subNote.id)}
                                 className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
                               >
@@ -556,12 +556,12 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
 
   const sidebarContent = (
     <aside
-      aria-label="笔记文件目录"
+      aria-label="Note directory"
       className="flex h-full w-72 flex-col border-r border-slate-200 bg-slate-100/90"
     >
       <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
         <span className="font-display text-base font-bold tracking-tight text-slate-900 whitespace-nowrap">
-          词句笔记
+          Wordbook
         </span>
         <div className="flex items-center gap-1">
           <button
@@ -573,12 +573,12 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
             className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
-            新建语言
+            New Language
           </button>
           <button
             type="button"
-            title="隐藏文件目录"
-            aria-label="隐藏文件目录"
+            title="Hide directory"
+            aria-label="Hide directory"
             onClick={onHideDesktop}
             className="hidden rounded-md p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800 md:inline-flex"
           >
@@ -586,7 +586,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
           </button>
           <button
             type="button"
-            aria-label="关闭目录"
+            aria-label="Close directory"
             onClick={onCloseMobile}
             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-200 md:hidden"
           >
@@ -597,15 +597,15 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
 
       <div className="flex-1 overflow-y-auto px-2 py-3">
         <div className="mb-2 flex items-center justify-between px-2 text-xs font-medium text-slate-500">
-          <span>文件目录</span>
-          <span>最多三级</span>
+          <span>Directory</span>
+          <span>Up to 3 levels</span>
         </div>
 
-        {creating?.type === 'language' && renderInlineCreator('输入语言名称（如 法语）...')}
+        {creating?.type === 'language' && renderInlineCreator('Enter language name (e.g. French)...')}
 
         {workspace.languages.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-slate-500">
-            还没有语言目录，请点击右上角“新建语言”。
+            No languages yet. Click &ldquo;New Language&rdquo; above.
           </div>
         ) : (
           workspace.languages.map(renderLanguageNode)
@@ -613,7 +613,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
       </div>
 
       <div className="border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
-        数据自动保存在本地浏览器
+        Saved locally in your browser
       </div>
     </aside>
   );

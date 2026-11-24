@@ -27,13 +27,13 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
   return (
     <div
       role="region"
-      aria-label="多选操作栏"
+      aria-label="Multi-select actions"
       className="flex min-h-[46px] flex-wrap items-center justify-between gap-3 border-t border-blue-200 bg-blue-50/95 px-4 py-2 text-sm md:px-6"
     >
       <div className="flex items-center gap-3">
         <span className="font-medium text-blue-900">
-          多选模式 · 已选择{' '}
-          <span className="font-mono-tabular font-semibold">{selectedCount}</span> 项
+          Multi-select ·{' '}
+          <span className="font-mono-tabular font-semibold">{selectedCount}</span> selected
         </span>
         <button
           type="button"
@@ -43,12 +43,12 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
           {allSelected ? (
             <>
               <Square className="h-3.5 w-3.5" />
-              取消全选
+              Deselect All
             </>
           ) : (
             <>
               <CheckSquare className="h-3.5 w-3.5" />
-              全选当前 ({totalVisibleCount})
+              Select All ({totalVisibleCount})
             </>
           )}
         </button>
@@ -62,7 +62,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
           className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-45 whitespace-nowrap shrink-0"
         >
           <Bookmark className="h-3.5 w-3.5" />
-          收藏所选
+          Star Selected
         </button>
         <button
           type="button"
@@ -70,7 +70,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
           onClick={onUnstarSelected}
           className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 whitespace-nowrap shrink-0"
         >
-          取消收藏
+          Unstar
         </button>
         <button
           type="button"
@@ -79,7 +79,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
           className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-45 whitespace-nowrap shrink-0"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          删除所选
+          Delete Selected
         </button>
         <button
           type="button"
@@ -87,7 +87,7 @@ export const MultiSelectBar: React.FC<MultiSelectBarProps> = ({
           className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-blue-100 hover:text-slate-900 whitespace-nowrap shrink-0"
         >
           <X className="h-3.5 w-3.5" />
-          退出多选
+          Exit
         </button>
       </div>
     </div>

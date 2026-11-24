@@ -231,8 +231,8 @@ export default function App() {
         id: `note_${cryptoRandomId()}`,
         type: 'note',
         name: uniqueName,
-        lang1Label: '语言1',
-        lang2Label: '语言2',
+        lang1Label: 'Language 1',
+        lang2Label: 'Language 2',
         items: [],
         updatedAt: Date.now(),
       };
@@ -445,7 +445,7 @@ export default function App() {
     }));
     setToastMessage({
       type: 'info',
-      text: `成功导入 ${newItems.length} 条数据`,
+      text: `Imported ${newItems.length} ${newItems.length === 1 ? 'item' : 'items'}`,
     });
   };
 
@@ -493,12 +493,12 @@ export default function App() {
     if (parsed.items.length === 0) {
       setToastMessage({
         type: 'error',
-        text: parsed.errors[0] || '导入失败：未能从 txt 文件中解析出有效内容',
+        text: parsed.errors[0] || 'Import failed: could not parse valid content from the .txt file',
       });
       return;
     }
 
-    const baseFileName = file.name.replace(/\.txt$/i, '').trim() || '导入笔记';
+    const baseFileName = file.name.replace(/\.txt$/i, '').trim() || 'Imported Note';
     const items: NoteItem[] = parsed.items.map((it) =>
       it.kind === 'segment'
         ? createSegmentItem(it.title)
@@ -515,7 +515,7 @@ export default function App() {
           const fallbackLang: LanguageNode = {
             id: `lang_${cryptoRandomId()}`,
             type: 'language',
-            name: parsed.meta?.languageName || '默认语言',
+            name: parsed.meta?.languageName || 'Default Language',
             children: [],
           };
           nextLanguages = [fallbackLang];
@@ -533,8 +533,8 @@ export default function App() {
         id: `note_${cryptoRandomId()}`,
         type: 'note',
         name: finalName,
-        lang1Label: parsed.meta?.lang1Label || '语言1',
-        lang2Label: parsed.meta?.lang2Label || '语言2',
+        lang1Label: parsed.meta?.lang1Label || 'Language 1',
+        lang2Label: parsed.meta?.lang2Label || 'Language 2',
         items,
         updatedAt: Date.now(),
       };
@@ -557,8 +557,8 @@ export default function App() {
       setToastMessage({
         type: 'info',
         text: renamedDueToConflict
-          ? `检测到同名笔记，已自动重命名为“${finalName}”并导入`
-          : `已导入笔记“${finalName}”`,
+          ? `Duplicate name detected; imported as "${finalName}"`
+          : `Imported note "${finalName}"`,
       });
 
       return {
@@ -614,7 +614,7 @@ export default function App() {
             <span>{toastMessage.text}</span>
             <button
               type="button"
-              aria-label="关闭提示"
+              aria-label="Close notification"
               onClick={() => setToastMessage(null)}
               className="rounded p-0.5 opacity-75 hover:opacity-100"
             >
@@ -710,7 +710,7 @@ export default function App() {
                 className="mb-6 hidden items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 md:inline-flex"
               >
                 <PanelLeftOpen className="h-4 w-4" />
-                显示文件目录
+                Show Directory
               </button>
             )}
             <button
@@ -719,21 +719,21 @@ export default function App() {
               className="mb-6 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 md:hidden"
             >
               <Menu className="h-4 w-4" />
-              打开目录
+              Open Directory
             </button>
             <FilePlus2 className="mb-3 h-10 w-10 text-slate-300" />
             <h1 className="font-display text-lg font-semibold text-slate-800">
-              请选择或新建一个笔记
+              Select or create a note
             </h1>
             <p className="mt-1.5 max-w-sm text-xs text-slate-500">
-              在左侧目录中选择语言下的笔记，或导入本地 .txt 笔记文件开始背诵词句。
+              Choose a note from the directory on the left, or import a local .txt file to begin studying.
             </p>
             <div className="mt-5 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
                   if (workspace.languages.length > 0) {
-                    handleCreateNote(workspace.languages[0].id, undefined, '新词句笔记');
+                    handleCreateNote(workspace.languages[0].id, undefined, 'New Vocabulary Note');
                   } else {
                     const langId = `lang_${cryptoRandomId()}`;
                     const noteId = `note_${cryptoRandomId()}`;
@@ -743,14 +743,14 @@ export default function App() {
                         {
                           id: langId,
                           type: 'language',
-                          name: '英语',
+                          name: 'English',
                           children: [
                             {
                               id: noteId,
                               type: 'note',
-                              name: '新词句笔记',
-                              lang1Label: 'English',
-                              lang2Label: '中文释义',
+                              name: 'New Vocabulary Note',
+                              lang1Label: 'Language 1',
+                              lang2Label: 'Language 2',
                               items: [],
                               updatedAt: Date.now(),
                             },
@@ -762,14 +762,14 @@ export default function App() {
                 }}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
               >
-                新建笔记
+                New Note
               </button>
               <button
                 type="button"
                 onClick={() => triggerTxtImport()}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
-                导入 .txt 文件
+                Import .txt File
               </button>
             </div>
           </div>
