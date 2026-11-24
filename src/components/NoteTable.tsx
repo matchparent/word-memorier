@@ -97,9 +97,12 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   const [inlineLang2, setInlineLang2] = useState('');
   const inlineLang1Ref = useRef<HTMLInputElement | null>(null);
 
-  // Draggable column widths
+  // Draggable column widths (applied on tablet/desktop viewports >= 768px)
   const [colWidths, setColWidths] = useState<ColumnWidths | null>(() => loadSavedColumnWidths());
   const [resizingCol, setResizingCol] = useState<ColumnKey | null>(null);
+  const [isCompactViewport, setIsCompactViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false,
+  );
   const thRefs = useRef<Record<ColumnKey, HTMLTableCellElement | null>>({
     index: null,
     star: null,
@@ -125,6 +128,15 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   useEffect(() => {
     saveColumnWidths(colWidths);
   }, [colWidths]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsCompactViewport(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const handleToggleColumn1 = (checked: boolean) => {
     setRevealedCells((prev) => {
@@ -342,7 +354,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
         e.stopPropagation();
         resetColumnWidths();
       }}
-      className={`absolute top-0 right-0 z-20 h-full w-2.5 cursor-col-resize touch-none select-none transition-colors ${
+      className={`hidden md:block absolute top-0 right-0 z-20 h-full w-2.5 cursor-col-resize touch-none select-none transition-colors ${
         resizingCol === key
           ? 'bg-blue-500/35'
           : 'hover:bg-blue-500/20'
@@ -400,77 +412,153 @@ export const NoteTable: React.FC<NoteTableProps> = ({
       data-testid="inline-insert-row"
       className="border-y border-blue-200 bg-blue-50/60"
     >
-      <td className="px-2 py-2 text-center align-middle">
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[11px] font-bold text-white">
-          +
-        </span>
-      </td>
-      <td className="px-3 py-2 text-center align-middle">
-        <span className="text-[11px] font-medium text-blue-700">New Row</span>
-      </td>
-      <td className="px-4 py-2 align-middle">
-        <input
-          ref={inlineLang1Ref}
-          type="text"
-          value={inlineLang1}
-          onChange={(e) => setInlineLang1(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              submitInlineInsert();
-            } else if (e.key === 'Escape') {
-              closeInlineInsert();
-            }
-          }}
-          aria-label={`Insert ${note.lang1Label} here`}
-          placeholder={`Enter ${note.lang1Label} (Lang 1)...`}
-          className="w-full rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-        />
-      </td>
-      <td className="px-4 py-2 align-middle">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <input
-            type="text"
-            value={inlineLang2}
-            onChange={(e) => setInlineLang2(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                submitInlineInsert();
-              } else if (e.key === 'Escape') {
-                closeInlineInsert();
-              }
-            }}
-            aria-label={`Insert ${note.lang2Label} here`}
-            placeholder={`Enter ${note.lang2Label} (Lang 2)...`}
-            className="min-w-[140px] flex-1 rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-          />
-          <button
-            type="button"
-            disabled={!inlineLang1.trim() && !inlineLang2.trim()}
-            onClick={submitInlineInsert}
-            className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-45 whitespace-nowrap shrink-0"
-          >
-            Add Row
-          </button>
-          <button
-            type="button"
-            onClick={insertInlineSegment}
-            title="Insert section [] here"
-            className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
-          >
-            + Section []
-          </button>
-          <button
-            type="button"
-            aria-label="Cancel insert"
-            onClick={closeInlineInsert}
-            className="rounded-md p-1.5 text-slate-500 hover:bg-blue-100 hover:text-slate-800"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </td>
+      {isCompactViewport ? (
+        <td colSpan={4} className="p-3 align-middle">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-blue-600 text-[10px] font-bold text-white">
+                  +
+                </span>
+                New Row
+              </span>
+              <button
+                type="button"
+                aria-label="Cancel insert"
+                onClick={closeInlineInsert}
+                className="rounded-md p-1 text-slate-500 hover:bg-blue-100 hover:text-slate-800"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <input
+              ref={inlineLang1Ref}
+              type="text"
+              value={inlineLang1}
+              onChange={(e) => setInlineLang1(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submitInlineInsert();
+                } else if (e.key === 'Escape') {
+                  closeInlineInsert();
+                }
+              }}
+              aria-label={`Insert ${note.lang1Label} here`}
+              placeholder={`Enter ${note.lang1Label} (Lang 1)...`}
+              className="w-full min-w-0 rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+            />
+            <input
+              type="text"
+              value={inlineLang2}
+              onChange={(e) => setInlineLang2(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submitInlineInsert();
+                } else if (e.key === 'Escape') {
+                  closeInlineInsert();
+                }
+              }}
+              aria-label={`Insert ${note.lang2Label} here`}
+              placeholder={`Enter ${note.lang2Label} (Lang 2)...`}
+              className="w-full min-w-0 rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!inlineLang1.trim() && !inlineLang2.trim()}
+                onClick={submitInlineInsert}
+                className="flex-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Add Row
+              </button>
+              <button
+                type="button"
+                onClick={insertInlineSegment}
+                title="Insert section [] here"
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+              >
+                + Section []
+              </button>
+            </div>
+          </div>
+        </td>
+      ) : (
+        <>
+          <td className="px-2 py-2 text-center align-middle">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-blue-600 text-[11px] font-bold text-white">
+              +
+            </span>
+          </td>
+          <td className="px-3 py-2 text-center align-middle">
+            <span className="text-[11px] font-medium text-blue-700">New Row</span>
+          </td>
+          <td className="px-4 py-2 align-middle">
+            <input
+              ref={inlineLang1Ref}
+              type="text"
+              value={inlineLang1}
+              onChange={(e) => setInlineLang1(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submitInlineInsert();
+                } else if (e.key === 'Escape') {
+                  closeInlineInsert();
+                }
+              }}
+              aria-label={`Insert ${note.lang1Label} here`}
+              placeholder={`Enter ${note.lang1Label} (Lang 1)...`}
+              className="w-full rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+            />
+          </td>
+          <td className="px-4 py-2 align-middle">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <input
+                type="text"
+                value={inlineLang2}
+                onChange={(e) => setInlineLang2(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    submitInlineInsert();
+                  } else if (e.key === 'Escape') {
+                    closeInlineInsert();
+                  }
+                }}
+                aria-label={`Insert ${note.lang2Label} here`}
+                placeholder={`Enter ${note.lang2Label} (Lang 2)...`}
+                className="min-w-[140px] flex-1 rounded-md border border-blue-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+              />
+              <button
+                type="button"
+                disabled={!inlineLang1.trim() && !inlineLang2.trim()}
+                onClick={submitInlineInsert}
+                className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-45 whitespace-nowrap shrink-0"
+              >
+                Add Row
+              </button>
+              <button
+                type="button"
+                onClick={insertInlineSegment}
+                title="Insert section [] here"
+                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0"
+              >
+                + Section []
+              </button>
+              <button
+                type="button"
+                aria-label="Cancel insert"
+                onClick={closeInlineInsert}
+                className="rounded-md p-1.5 text-slate-500 hover:bg-blue-100 hover:text-slate-800"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </td>
+        </>
+      )}
     </tr>
   );
 
@@ -524,10 +612,10 @@ export const NoteTable: React.FC<NoteTableProps> = ({
             });
           }}
           aria-label={`Reveal row ${displayIndex} ${colTitle}`}
-          className="group/mask flex min-h-9 w-full items-center justify-between rounded-md border border-dashed border-slate-200 bg-slate-100/90 px-3 py-1.5 text-left text-xs text-slate-400 transition-colors hover:border-slate-300 hover:bg-slate-200/70 hover:text-slate-600"
+          className="group/mask flex min-h-9 w-full min-w-0 items-center justify-between rounded-md border border-dashed border-slate-200 bg-slate-100/90 px-2 py-1.5 text-left text-xs text-slate-400 transition-colors hover:border-slate-300 hover:bg-slate-200/70 hover:text-slate-600 md:px-3"
         >
           <span className="select-none tracking-widest">••••••</span>
-          <span className="opacity-0 transition-opacity group-hover/mask:opacity-100">
+          <span className="hidden opacity-0 transition-opacity group-hover/mask:opacity-100 sm:inline">
             Click to reveal
           </span>
         </button>
@@ -535,7 +623,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     }
 
     return (
-      <div className="group/cell flex items-start justify-between gap-2">
+      <div className="group/cell flex min-w-0 items-start justify-between gap-1 md:gap-2">
         <button
           type="button"
           onClick={(e) => {
@@ -544,7 +632,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
             setEditingCell({ id: entry.id, field, value: textValue });
           }}
           aria-label={`Edit row ${displayIndex} ${colTitle}: ${textValue}`}
-          className="min-h-9 flex-1 rounded-md px-2 py-1.5 text-left text-sm leading-relaxed text-slate-900 transition-colors hover:bg-slate-100/80 whitespace-pre-wrap break-words"
+          className="min-h-9 min-w-0 flex-1 rounded-md px-1.5 py-1.5 text-left text-[13px] leading-relaxed text-slate-900 transition-colors hover:bg-slate-100/80 whitespace-pre-wrap break-words [overflow-wrap:anywhere] md:px-2 md:text-sm"
         >
           {textValue}
         </button>
@@ -563,7 +651,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 return next;
               });
             }}
-            className="mt-1.5 shrink-0 rounded p-1 text-slate-400 opacity-0 transition-opacity hover:bg-slate-200 hover:text-slate-700 group-hover/cell:opacity-100"
+            className="mt-1.5 shrink-0 rounded p-1 text-slate-400 opacity-100 transition-opacity hover:bg-slate-200 hover:text-slate-700 md:opacity-0 md:group-hover/cell:opacity-100"
           >
             <EyeOff className="h-3.5 w-3.5" />
           </button>
@@ -572,8 +660,9 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     );
   };
 
-  const totalTableWidth = colWidths
-    ? colWidths.index + colWidths.star + colWidths.lang1 + colWidths.lang2
+  const activeColWidths = isCompactViewport ? null : colWidths;
+  const totalTableWidth = activeColWidths
+    ? activeColWidths.index + activeColWidths.star + activeColWidths.lang1 + activeColWidths.lang2
     : undefined;
 
   return (
@@ -582,26 +671,26 @@ export const NoteTable: React.FC<NoteTableProps> = ({
         <table
           width={totalTableWidth}
           className={`table-fixed border-collapse text-left ${
-            colWidths ? 'min-w-full' : 'w-full min-w-[640px]'
+            activeColWidths ? 'min-w-full' : 'w-full'
           }`}
         >
           <colgroup>
-            <col width={colWidths?.index} className={colWidths ? undefined : 'w-24'} />
-            <col width={colWidths?.star} className={colWidths ? undefined : 'w-32'} />
-            <col width={colWidths?.lang1} />
-            <col width={colWidths?.lang2} />
+            <col width={activeColWidths?.index} className={activeColWidths ? undefined : 'w-11 md:w-20'} />
+            <col width={activeColWidths?.star} className={activeColWidths ? undefined : 'w-14 md:w-24'} />
+            <col width={activeColWidths?.lang1} />
+            <col width={activeColWidths?.lang2} />
           </colgroup>
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur-xs">
-            <tr className="text-xs font-semibold text-slate-600">
+            <tr className="text-[11px] font-semibold text-slate-600 md:text-xs">
               {/* Column 1: # + Insert at Top trigger */}
               <th
                 ref={(el) => {
                   thRefs.current.index = el;
                 }}
                 scope="col"
-                className="relative px-3 py-2.5 text-center"
+                className="relative px-1 py-2 text-center md:px-3 md:py-2.5"
               >
-                <div className="inline-flex items-center justify-center gap-1">
+                <div className="inline-flex items-center justify-center gap-0.5 md:gap-1">
                   <span>#</span>
                   {!isMultiSelectMode && (
                     <button
@@ -624,11 +713,11 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                   thRefs.current.star = el;
                 }}
                 scope="col"
-                className="relative px-3 py-2.5 text-center"
+                className="relative px-1 py-2 text-center md:px-3 md:py-2.5"
               >
                 <label
                   title="Show starred entries only"
-                  className="inline-flex cursor-pointer items-center justify-center gap-1.5 font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap"
+                  className="inline-flex cursor-pointer items-center justify-center gap-1 font-semibold text-slate-600 hover:text-slate-900 whitespace-nowrap md:gap-1.5"
                 >
                   <input
                     type="checkbox"
@@ -642,67 +731,71 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 {renderResizeHandle('star', 'Star')}
               </th>
 
-              {/* Column 3: Lang 1 + Top Show/Hide Checkbox */}
+              {/* Column 3: Lang 1 + Checkbox only (no "Show text" label) */}
               <th
                 ref={(el) => {
                   thRefs.current.lang1 = el;
                 }}
                 scope="col"
-                className="relative px-4 py-2.5"
+                className="relative px-2 py-2 md:px-4 md:py-2.5"
               >
-                <div className="flex items-center justify-between gap-2 pr-1">
-                  <div className="min-w-0 flex items-center gap-1.5">
-                    {editingColLabel === 'lang1' ? (
-                      <input
-                        type="text"
-                        autoFocus
-                        value={colLabelDraft}
-                        onChange={(e) => setColLabelDraft(e.target.value)}
-                        onBlur={() => commitColLabel('lang1')}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitColLabel('lang1');
-                          if (e.key === 'Escape') setEditingColLabel(null);
-                        }}
-                        className="w-28 rounded border border-blue-400 bg-white px-1.5 py-0.5 text-xs text-slate-900 outline-none"
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setColLabelDraft(note.lang1Label);
-                          setEditingColLabel('lang1');
-                        }}
-                        title="Click to rename Language 1 column"
-                        className="truncate hover:text-blue-600"
-                      >
-                        Lang 1 ({note.lang1Label})
-                      </button>
-                    )}
-                  </div>
-
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-normal text-slate-600 hover:text-slate-900 whitespace-nowrap shrink-0">
+                <div className="flex min-w-0 items-center gap-1.5 pr-1">
+                  <input
+                    type="checkbox"
+                    checked={showLang1}
+                    onChange={(e) => handleToggleColumn1(e.target.checked)}
+                    title={showLang1 ? `Hide ${note.lang1Label} text` : `Show ${note.lang1Label} text`}
+                    aria-label={`Show ${note.lang1Label} text`}
+                    className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 accent-blue-600"
+                  />
+                  {editingColLabel === 'lang1' ? (
                     <input
-                      type="checkbox"
-                      checked={showLang1}
-                      onChange={(e) => handleToggleColumn1(e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
+                      type="text"
+                      autoFocus
+                      value={colLabelDraft}
+                      onChange={(e) => setColLabelDraft(e.target.value)}
+                      onBlur={() => commitColLabel('lang1')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitColLabel('lang1');
+                        if (e.key === 'Escape') setEditingColLabel(null);
+                      }}
+                      className="min-w-0 w-full max-w-32 rounded border border-blue-400 bg-white px-1.5 py-0.5 text-xs text-slate-900 outline-none"
                     />
-                    Show text
-                  </label>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setColLabelDraft(note.lang1Label);
+                        setEditingColLabel('lang1');
+                      }}
+                      title="Click to rename Language 1 column"
+                      className="min-w-0 flex-1 text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] hover:text-blue-600"
+                    >
+                      Lang 1 ({note.lang1Label})
+                    </button>
+                  )}
                 </div>
                 {renderResizeHandle('lang1', 'Language 1')}
               </th>
 
-              {/* Column 4: Lang 2 + Top Show/Hide Checkbox + Show Header button if hidden */}
+              {/* Column 4: Lang 2 + Checkbox only + Show Header button if hidden */}
               <th
                 ref={(el) => {
                   thRefs.current.lang2 = el;
                 }}
                 scope="col"
-                className="relative px-4 py-2.5"
+                className="relative px-2 py-2 md:px-4 md:py-2.5"
               >
-                <div className="flex items-center justify-between gap-2 pr-1">
-                  <div className="min-w-0 flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 pr-1">
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={showLang2}
+                      onChange={(e) => handleToggleColumn2(e.target.checked)}
+                      title={showLang2 ? `Hide ${note.lang2Label} text` : `Show ${note.lang2Label} text`}
+                      aria-label={`Show ${note.lang2Label} text`}
+                      className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-slate-300 accent-blue-600"
+                    />
                     {editingColLabel === 'lang2' ? (
                       <input
                         type="text"
@@ -714,7 +807,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           if (e.key === 'Enter') commitColLabel('lang2');
                           if (e.key === 'Escape') setEditingColLabel(null);
                         }}
-                        className="w-28 rounded border border-blue-400 bg-white px-1.5 py-0.5 text-xs text-slate-900 outline-none"
+                        className="min-w-0 w-full max-w-32 rounded border border-blue-400 bg-white px-1.5 py-0.5 text-xs text-slate-900 outline-none"
                       />
                     ) : (
                       <button
@@ -724,36 +817,25 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           setEditingColLabel('lang2');
                         }}
                         title="Click to rename Language 2 column"
-                        className="truncate hover:text-blue-600"
+                        className="min-w-0 flex-1 text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] hover:text-blue-600"
                       >
                         Lang 2 ({note.lang2Label})
                       </button>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-normal text-slate-600 hover:text-slate-900 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={showLang2}
-                        onChange={(e) => handleToggleColumn2(e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600"
-                      />
-                      Show text
-                    </label>
-                    {isHeaderHidden && (
-                      <button
-                        type="button"
-                        title="Show top toolbar"
-                        aria-label="Show header"
-                        onClick={onShowHeader}
-                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 whitespace-nowrap shrink-0"
-                      >
-                        <PanelTopOpen className="h-3.5 w-3.5 text-slate-500" />
-                        Show Header
-                      </button>
-                    )}
-                  </div>
+                  {isHeaderHidden && (
+                    <button
+                      type="button"
+                      title="Show top toolbar"
+                      aria-label="Show header"
+                      onClick={onShowHeader}
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 whitespace-nowrap shrink-0 md:px-2 md:py-1"
+                    >
+                      <PanelTopOpen className="h-3.5 w-3.5 text-slate-500" />
+                      <span className="hidden sm:inline">Show Header</span>
+                    </button>
+                  )}
                 </div>
                 {renderResizeHandle('lang2', 'Language 2')}
               </th>
@@ -901,9 +983,9 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                           : 'hover:bg-slate-50/70'
                     } ${isMultiSelectMode ? 'cursor-pointer select-none' : ''}`}
                   >
-                    {/* Column 1: 序号 + Insert Below Row affordance */}
-                    <td className="px-3 py-2.5 text-center align-middle">
-                      <div className="inline-flex items-center justify-center gap-1.5">
+                    {/* Column 1: # + Insert Below Row affordance */}
+                    <td className="px-1 py-2 text-center align-middle md:px-3 md:py-2.5">
+                      <div className="inline-flex items-center justify-center gap-0.5 md:gap-1.5">
                         {isMultiSelectMode && (
                           <span
                             aria-hidden="true"
@@ -938,7 +1020,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                     </td>
 
                     {/* Column 2: Star */}
-                    <td className="px-3 py-2.5 text-center align-middle">
+                    <td className="px-1 py-2 text-center align-middle md:px-3 md:py-2.5">
                       <button
                         type="button"
                         data-no-longpress="true"
@@ -965,13 +1047,13 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                       </button>
                     </td>
 
-                    {/* Column 3: 语言1 */}
-                    <td className="px-4 py-2 align-middle">
+                    {/* Column 3: Lang 1 */}
+                    <td className="px-1.5 py-2 align-middle md:px-4">
                       {renderLanguageCell(entry, 'lang1', displayIndex)}
                     </td>
 
-                    {/* Column 4: 语言2 */}
-                    <td className="px-4 py-2 align-middle">
+                    {/* Column 4: Lang 2 */}
+                    <td className="px-1.5 py-2 align-middle md:px-4">
                       {renderLanguageCell(entry, 'lang2', displayIndex)}
                     </td>
                   </tr>

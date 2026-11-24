@@ -177,7 +177,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
 
     return (
       <div key={lang.id} className="mb-1">
-        <div className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-slate-200/70">
+        <div className="group flex items-start justify-between gap-1.5 rounded-md px-2 py-1.5 hover:bg-slate-200/70">
           {isRenamingLang ? (
             <form onSubmit={submitRename} className="flex flex-1 items-center gap-1">
               <input
@@ -197,15 +197,17 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
               type="button"
               onClick={() => toggleLang(lang.id)}
               aria-expanded={isExpanded}
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm font-semibold text-slate-800"
+              className="flex min-w-0 flex-1 items-start gap-1.5 text-left text-sm font-semibold text-slate-800"
             >
               {isExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <ChevronDown className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-500" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-500" />
               )}
-              <Languages className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-              <span className="truncate">{lang.name}</span>
+              <Languages className="mt-1 h-3.5 w-3.5 shrink-0 text-blue-600" />
+              <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug [overflow-wrap:anywhere]">
+                {lang.name}
+              </span>
             </button>
           )}
 
@@ -286,7 +288,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                 return (
                   <div
                     key={child.id}
-                    className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors ${
+                    className={`group flex items-start justify-between gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors ${
                       isActive
                         ? 'bg-blue-50 text-blue-700 font-medium'
                         : 'text-slate-700 hover:bg-slate-200/60'
@@ -313,14 +315,16 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                           onSelectNote(child.id);
                           onCloseMobile();
                         }}
-                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                        className="flex min-w-0 flex-1 items-start gap-1.5 text-left"
                       >
                         <FileText
-                          className={`h-3.5 w-3.5 shrink-0 ${
+                          className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
                             isActive ? 'text-blue-600' : 'text-slate-400'
                           }`}
                         />
-                        <span className="truncate">{child.name}</span>
+                        <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug [overflow-wrap:anywhere]">
+                          {child.name}
+                        </span>
                       </button>
                     )}
 
@@ -363,7 +367,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
 
               return (
                 <div key={child.id} className="mt-0.5">
-                  <div className="group flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-slate-200/60">
+                  <div className="group flex items-start justify-between gap-1.5 rounded-md px-2 py-1.5 hover:bg-slate-200/60">
                     {isRenamingFolder ? (
                       <form onSubmit={submitRename} className="flex flex-1 items-center">
                         <input
@@ -383,15 +387,17 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                         type="button"
                         onClick={() => toggleFolder(child.id)}
                         aria-expanded={folderExpanded}
-                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm font-medium text-slate-700"
+                        className="flex min-w-0 flex-1 items-start gap-1.5 text-left text-sm font-medium text-slate-700"
                       >
                         {folderExpanded ? (
-                          <ChevronDown className="h-3 w-3 shrink-0 text-slate-400" />
+                          <ChevronDown className="mt-1 h-3 w-3 shrink-0 text-slate-400" />
                         ) : (
-                          <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
+                          <ChevronRight className="mt-1 h-3 w-3 shrink-0 text-slate-400" />
                         )}
-                        <Folder className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                        <span className="truncate">{child.name}</span>
+                        <Folder className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                        <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug [overflow-wrap:anywhere]">
+                          {child.name}
+                        </span>
                       </button>
                     )}
 
@@ -465,7 +471,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                         return (
                           <div
                             key={subNote.id}
-                            className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors ${
+                            className={`group flex items-start justify-between gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors ${
                               isActive
                                 ? 'bg-blue-50 text-blue-700 font-medium'
                                 : 'text-slate-700 hover:bg-slate-200/60'
@@ -494,14 +500,16 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                                   onSelectNote(subNote.id);
                                   onCloseMobile();
                                 }}
-                                className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                                className="flex min-w-0 flex-1 items-start gap-1.5 text-left"
                               >
                                 <FileText
-                                  className={`h-3.5 w-3.5 shrink-0 ${
+                                  className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
                                     isActive ? 'text-blue-600' : 'text-slate-400'
                                   }`}
                                 />
-                                <span className="truncate">{subNote.name}</span>
+                                <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug [overflow-wrap:anywhere]">
+                                  {subNote.name}
+                                </span>
                               </button>
                             )}
 
@@ -557,7 +565,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
   const sidebarContent = (
     <aside
       aria-label="Note directory"
-      className="flex h-full w-72 flex-col border-r border-slate-200 bg-slate-100/90"
+      className="flex h-full w-[85vw] max-w-80 flex-col border-r border-slate-200 bg-slate-100/90 md:w-72"
     >
       <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
         <span className="font-display text-base font-bold tracking-tight text-slate-900 whitespace-nowrap">
