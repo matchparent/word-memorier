@@ -121,6 +121,11 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   const suppressClickRef = useRef(false);
   const [pressingRowId, setPressingRowId] = useState<string | null>(null);
 
+  // Long-press handling refs for column header rename
+  const colLabelTimerRef = useRef<number | null>(null);
+  const colLabelOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressColLabelClickRef = useRef(false);
+
   useEffect(() => {
     setInlineInsertAnchor(null);
     setInlineLang1('');
@@ -309,6 +314,57 @@ export const NoteTable: React.FC<NoteTableProps> = ({
       }
     }
     setEditingColLabel(null);
+  };
+
+  const clearColLabelLongPress = () => {
+    if (colLabelTimerRef.current !== null) {
+      window.clearTimeout(colLabelTimerRef.current);
+      colLabelTimerRef.current = null;
+    }
+    colLabelOriginRef.current = null;
+  };
+
+  const handleColLabelPointerDown = (
+    e: React.PointerEvent<HTMLButtonElement>,
+    field: 'lang1' | 'lang2',
+  ) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    clearColLabelLongPress();
+    colLabelOriginRef.current = { x: e.clientX, y: e.clientY };
+
+    colLabelTimerRef.current = window.setTimeout(() => {
+      colLabelTimerRef.current = null;
+      colLabelOriginRef.current = null;
+      suppressColLabelClickRef.current = true;
+      setColLabelDraft(field === 'lang1' ? note.lang1Label : note.lang2Label);
+      setEditingColLabel(field);
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(20);
+      }
+      window.setTimeout(() => {
+        suppressColLabelClickRef.current = false;
+      }, 350);
+    }, LONG_PRESS_MS);
+  };
+
+  const handleColLabelPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!colLabelOriginRef.current) return;
+    const dx = Math.abs(e.clientX - colLabelOriginRef.current.x);
+    const dy = Math.abs(e.clientY - colLabelOriginRef.current.y);
+    if (dx > 8 || dy > 8) {
+      clearColLabelLongPress();
+    }
+  };
+
+  const handleColLabelClick = (field: 'lang1' | 'lang2') => {
+    if (suppressColLabelClickRef.current) {
+      return;
+    }
+    if (field === 'lang1') {
+      handleToggleColumn1(!showLang1);
+    } else {
+      handleToggleColumn2(!showLang2);
+    }
   };
 
   const startColumnResize = (key: ColumnKey, e: React.PointerEvent<HTMLDivElement>) => {
@@ -806,12 +862,14 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => {
-                        setColLabelDraft(note.lang1Label);
-                        setEditingColLabel('lang1');
-                      }}
-                      title="Click to rename Language 1 column"
-                      className="min-w-0 flex-1 text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] hover:text-blue-600"
+                      onPointerDown={(e) => handleColLabelPointerDown(e, 'lang1')}
+                      onPointerMove={handleColLabelPointerMove}
+                      onPointerUp={clearColLabelLongPress}
+                      onPointerCancel={clearColLabelLongPress}
+                      onPointerLeave={clearColLabelLongPress}
+                      onClick={() => handleColLabelClick('lang1')}
+                      title="Click to toggle text visibility · Long-press to rename column"
+                      className="min-w-0 flex-1 select-none text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] hover:text-blue-600"
                     >
                       Lang 1 ({note.lang1Label})
                     </button>
@@ -854,12 +912,14 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => {
-                          setColLabelDraft(note.lang2Label);
-                          setEditingColLabel('lang2');
-                        }}
-                        title="Click to rename Language 2 column"
-                        className="min-w-0 flex-1 text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] hover:text-blue-600"
+                        onPointerDown={(e) => handleColLabelPointerDown(e, 'lang2')}
+                        onPointerMove={handleColLabelPointerMove}
+                        onPointerUp={clearColLabelLongPress}
+                        onPointerCancel={clearColLabelLongPress}
+                        onPointerLeave={clearColLabelLongPress}
+                        onClick={() => handleColLabelClick('lang2')}
+                        title="Click to toggle text visibility · Long-press to rename column"
+                        className="min-w-0 flex-1 select-none text-left leading-snug whitespace-normal break-words [overflow-wrap:anywhere] hover:text-blue-600"
                       >
                         Lang 2 ({note.lang2Label})
                       </button>

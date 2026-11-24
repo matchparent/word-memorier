@@ -11,7 +11,6 @@ import {
   Pencil,
   Plus,
   Trash2,
-  Upload,
   X,
 } from 'lucide-react';
 import type { LanguageNode, NotebookWorkspace } from '../types/notebook';
@@ -25,15 +24,14 @@ interface SidebarTreeProps {
   onSelectNote: (noteId: string) => void;
   onCreateLanguage: (name: string) => void;
   onRenameLanguage: (langId: string, name: string) => void;
-  onDeleteLanguage: (langId: string) => void;
+  onRequestDeleteLanguage: (lang: { id: string; name: string }) => void;
   onCreateFolder: (langId: string, name: string) => void;
   onRenameFolder: (langId: string, folderId: string, name: string) => void;
-  onDeleteFolder: (langId: string, folderId: string) => void;
+  onRequestDeleteFolder: (folder: { langId: string; id: string; name: string }) => void;
   onCreateNote: (langId: string, folderId: string | undefined, name: string) => void;
   onRenameNote: (noteId: string, name: string) => void;
-  onDeleteNote: (noteId: string) => void;
+  onRequestDeleteNote: (note: { id: string; name: string }) => void;
   onExportNote: (noteId: string) => void;
-  onTriggerImportTxt: (langId: string, folderId?: string) => void;
 }
 
 type CreatingTarget =
@@ -57,15 +55,14 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
   onSelectNote,
   onCreateLanguage,
   onRenameLanguage,
-  onDeleteLanguage,
+  onRequestDeleteLanguage,
   onCreateFolder,
   onRenameFolder,
-  onDeleteFolder,
+  onRequestDeleteFolder,
   onCreateNote,
   onRenameNote,
-  onDeleteNote,
+  onRequestDeleteNote,
   onExportNote,
-  onTriggerImportTxt,
 }) => {
   const [expandedLangs, setExpandedLangs] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
@@ -238,15 +235,6 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
             </button>
             <button
               type="button"
-              title="Import .txt to this language"
-              aria-label={`Import txt to ${lang.name}`}
-              onClick={() => onTriggerImportTxt(lang.id)}
-              className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
-            >
-              <Upload className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
               title="Rename language"
               aria-label={`Rename language ${lang.name}`}
               onClick={() => setRenaming({ type: 'language', id: lang.id, value: lang.name })}
@@ -258,7 +246,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
               type="button"
               title="Delete language"
               aria-label={`Delete language ${lang.name}`}
-              onClick={() => onDeleteLanguage(lang.id)}
+              onClick={() => onRequestDeleteLanguage({ id: lang.id, name: lang.name })}
               className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
             >
               <Trash2 className="h-3 w-3" />
@@ -351,7 +339,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                         type="button"
                         title="Delete note"
                         aria-label={`Delete note ${child.name}`}
-                        onClick={() => onDeleteNote(child.id)}
+                        onClick={() => onRequestDeleteNote({ id: child.id, name: child.name })}
                         className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -401,7 +389,7 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                       </button>
                     )}
 
-                    {/* Max depth is 3: inside Level 2 folder, only Level 3 Notes or .txt import allowed (no sub-folders) */}
+                    {/* Max depth is 3: inside Level 2 folder, only Level 3 Notes allowed (no sub-folders) */}
                     <div className="flex shrink-0 items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                       <button
                         type="button"
@@ -414,15 +402,6 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                         className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
                       >
                         <Plus className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Import .txt to this folder"
-                        aria-label={`Import txt to ${child.name}`}
-                        onClick={() => onTriggerImportTxt(lang.id, child.id)}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-300/60 hover:text-slate-900"
-                      >
-                        <Upload className="h-3 w-3" />
                       </button>
                       <button
                         type="button"
@@ -444,7 +423,13 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                         type="button"
                         title="Delete folder"
                         aria-label={`Delete folder ${child.name}`}
-                        onClick={() => onDeleteFolder(lang.id, child.id)}
+                        onClick={() =>
+                          onRequestDeleteFolder({
+                            langId: lang.id,
+                            id: child.id,
+                            name: child.name,
+                          })
+                        }
                         className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -542,7 +527,9 @@ export const SidebarTree: React.FC<SidebarTreeProps> = ({
                                 type="button"
                                 title="Delete note"
                                 aria-label={`Delete note ${subNote.name}`}
-                                onClick={() => onDeleteNote(subNote.id)}
+                                onClick={() =>
+                                  onRequestDeleteNote({ id: subNote.id, name: subNote.name })
+                                }
                                 className="rounded p-1 text-slate-500 hover:bg-red-100 hover:text-red-700"
                               >
                                 <Trash2 className="h-3 w-3" />

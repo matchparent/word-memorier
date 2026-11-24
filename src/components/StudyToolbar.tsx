@@ -9,7 +9,6 @@ import {
   Pencil,
   RefreshCw,
   Shuffle,
-  Upload,
 } from 'lucide-react';
 import type { DisplayOrderMode, NoteFile } from '../types/notebook';
 import { MultiSelectBar } from './MultiSelectBar';
@@ -39,7 +38,6 @@ interface StudyToolbarProps {
   onChangeOrderMode: (mode: DisplayOrderMode) => void;
   onReshuffle: () => void;
   onOpenPasteImport: () => void;
-  onTriggerTxtImport: () => void;
   onExportTxt: () => void;
   showIndexCol: boolean;
   showStarCol: boolean;
@@ -72,7 +70,6 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
   onChangeOrderMode,
   onReshuffle,
   onOpenPasteImport,
-  onTriggerTxtImport,
   onExportTxt,
   showIndexCol,
   showStarCol,
@@ -172,14 +169,6 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
           </button>
           <button
             type="button"
-            onClick={onTriggerTxtImport}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0 md:px-3"
-          >
-            <Upload className="h-3.5 w-3.5 text-slate-500" />
-            Import .txt
-          </button>
-          <button
-            type="button"
             onClick={onExportTxt}
             className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 whitespace-nowrap shrink-0 md:px-3"
           >
@@ -266,9 +255,8 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
             <div
               role="group"
               aria-label="Column visibility"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700"
+              className="inline-flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700"
             >
-              <span className="text-[11px] font-medium text-slate-400">Columns</span>
               <label className="inline-flex cursor-pointer items-center gap-1 font-medium hover:text-slate-900">
                 <input
                   type="checkbox"

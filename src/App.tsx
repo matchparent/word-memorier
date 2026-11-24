@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FilePlus2, Menu, PanelLeftOpen, X } from 'lucide-react';
 import type {
   DisplayOrderMode,
@@ -20,7 +20,6 @@ import {
   createSegmentItem,
   cryptoRandomId,
   insertItemsAtPosition,
-  parseNoteImportText,
   resolveUniqueFileName,
   serializeNoteToTxt,
 } from './utils/noteParser';
@@ -42,6 +41,9 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 type PendingDeleteAction =
   | { kind: 'segment'; id: string; label: string }
   | { kind: 'entries'; ids: string[]; preview: string }
+  | { kind: 'language'; id: string; name: string }
+  | { kind: 'folder'; langId: string; id: string; name: string }
+  | { kind: 'note'; id: string; name: string }
   | null;
 
 export default function App() {
@@ -84,9 +86,6 @@ export default function App() {
     type: 'info' | 'error';
     text: string;
   } | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const importTargetRef = useRef<{ langId: string; folderId?: string } | null>(null);
 
   // Persist workspace to localStorage whenever it changes
   useEffect(() => {
@@ -460,6 +459,23 @@ export default function App() {
     setPendingDelete({ kind: 'segment', id: segment.id, label });
   };
 
+  const handleRequestDeleteLanguage = (lang: { id: string; name: string }) => {
+    setPendingDelete({ kind: 'language', id: lang.id, name: lang.name });
+  };
+
+  const handleRequestDeleteFolder = (folder: { langId: string; id: string; name: string }) => {
+    setPendingDelete({
+      kind: 'folder',
+      langId: folder.langId,
+      id: folder.id,
+      name: folder.name,
+    });
+  };
+
+  const handleRequestDeleteNote = (note: { id: string; name: string }) => {
+    setPendingDelete({ kind: 'note', id: note.id, name: note.name });
+  };
+
   const handleConfirmPendingDelete = () => {
     if (!pendingDelete) return;
     if (pendingDelete.kind === 'segment') {
@@ -472,6 +488,12 @@ export default function App() {
         items: n.items.filter((it) => !idSet.has(it.id)),
       }));
       exitMultiSelect();
+    } else if (pendingDelete.kind === 'language') {
+      handleDeleteLanguage(pendingDelete.id);
+    } else if (pendingDelete.kind === 'folder') {
+      handleDeleteFolder(pendingDelete.langId, pendingDelete.id);
+    } else if (pendingDelete.kind === 'note') {
+      handleDeleteNote(pendingDelete.id);
     }
     setPendingDelete(null);
   };
@@ -494,7 +516,7 @@ export default function App() {
     });
   };
 
-  // --- .txt Export & Import ---
+  // --- .txt Export ---
   const handleExportNote = (noteId: string) => {
     const loc = findNoteLocation(workspace, noteId);
     if (!loc) return;
@@ -510,122 +532,55 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const triggerTxtImport = (langId?: string, folderId?: string) => {
-    if (langId) {
-      importTargetRef.current = { langId, folderId };
-    } else if (activeLocation) {
-      importTargetRef.current = {
-        langId: activeLocation.language.id,
-        folderId: activeLocation.folder?.id,
-      };
-    } else if (workspace.languages.length > 0) {
-      importTargetRef.current = { langId: workspace.languages[0].id };
-    } else {
-      importTargetRef.current = null;
+  const confirmDialogProps = (() => {
+    if (!pendingDelete) {
+      return { title: '', message: '', detail: undefined };
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleTxtFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const text = await file.text();
-    const parsed = parseNoteImportText(text);
-    if (parsed.items.length === 0) {
-      setToastMessage({
-        type: 'error',
-        text: parsed.errors[0] || 'Import failed: could not parse valid content from the .txt file',
-      });
-      return;
-    }
-
-    const baseFileName = file.name.replace(/\.txt$/i, '').trim() || 'Imported Note';
-    const items: NoteItem[] = parsed.items.map((it) =>
-      it.kind === 'segment'
-        ? createSegmentItem(it.title)
-        : createEntryItem(it.lang1, it.lang2, Boolean(it.starred)),
-    );
-
-    setWorkspace((prev) => {
-      let targetLangId = importTargetRef.current?.langId;
-      let targetFolderId = importTargetRef.current?.folderId;
-      let nextLanguages = [...prev.languages];
-
-      if (!targetLangId || !nextLanguages.some((l) => l.id === targetLangId)) {
-        if (nextLanguages.length === 0) {
-          const fallbackLang: LanguageNode = {
-            id: `lang_${cryptoRandomId()}`,
-            type: 'language',
-            name: parsed.meta?.languageName || 'Default Language',
-            children: [],
-          };
-          nextLanguages = [fallbackLang];
-        }
-        targetLangId = nextLanguages[0].id;
-        targetFolderId = undefined;
-      }
-
-      const tempWs: NotebookWorkspace = { ...prev, languages: nextLanguages };
-      const existingNames = getSiblingNoteNames(tempWs, targetLangId, targetFolderId);
-      const finalName = resolveUniqueFileName(baseFileName, existingNames);
-      const renamedDueToConflict = finalName !== baseFileName;
-
-      const newNote: NoteFile = {
-        id: `note_${cryptoRandomId()}`,
-        type: 'note',
-        name: finalName,
-        lang1Label: parsed.meta?.lang1Label || 'Language 1',
-        lang2Label: parsed.meta?.lang2Label || 'Language 2',
-        items,
-        updatedAt: Date.now(),
-      };
-
-      const updatedLanguages = nextLanguages.map((l) => {
-        if (l.id !== targetLangId) return l;
-        if (!targetFolderId) {
-          return { ...l, children: [...l.children, newNote] };
-        }
+    switch (pendingDelete.kind) {
+      case 'segment':
         return {
-          ...l,
-          children: l.children.map((c) =>
-            c.type === 'folder' && c.id === targetFolderId
-              ? { ...c, children: [...c.children, newNote] }
-              : c,
-          ),
+          title: 'Delete Section?',
+          message:
+            'Are you sure you want to delete this section divider? Entries under it will stay in the note.',
+          detail: pendingDelete.label,
         };
-      });
-
-      setToastMessage({
-        type: 'info',
-        text: renamedDueToConflict
-          ? `Duplicate name detected; imported as "${finalName}"`
-          : `Imported note "${finalName}"`,
-      });
-
-      return {
-        languages: updatedLanguages,
-        activeNoteId: newNote.id,
-      };
-    });
-    exitMultiSelect();
-  };
+      case 'entries':
+        return {
+          title:
+            pendingDelete.ids.length === 1
+              ? 'Delete Entry?'
+              : `Delete ${pendingDelete.ids.length} Entries?`,
+          message:
+            pendingDelete.ids.length === 1
+              ? 'Are you sure you want to delete this entry? This action cannot be undone.'
+              : 'Are you sure you want to delete the selected entries? This action cannot be undone.',
+          detail: pendingDelete.preview || undefined,
+        };
+      case 'language':
+        return {
+          title: 'Delete Language?',
+          message:
+            'Are you sure you want to delete this language and all folders and notes inside it? This action cannot be undone.',
+          detail: pendingDelete.name,
+        };
+      case 'folder':
+        return {
+          title: 'Delete Folder?',
+          message:
+            'Are you sure you want to delete this folder and all notes inside it? This action cannot be undone.',
+          detail: pendingDelete.name,
+        };
+      case 'note':
+        return {
+          title: 'Delete Note?',
+          message: 'Are you sure you want to delete this note? This action cannot be undone.',
+          detail: pendingDelete.name,
+        };
+    }
+  })();
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
-      {/* Hidden .txt file input for import */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".txt,text/plain"
-        onChange={handleTxtFileSelected}
-        className="hidden"
-        aria-hidden="true"
-      />
-
       <SidebarTree
         workspace={workspace}
         isDesktopOpen={isDesktopSidebarOpen}
@@ -635,15 +590,14 @@ export default function App() {
         onSelectNote={handleSelectNote}
         onCreateLanguage={handleCreateLanguage}
         onRenameLanguage={handleRenameLanguage}
-        onDeleteLanguage={handleDeleteLanguage}
+        onRequestDeleteLanguage={handleRequestDeleteLanguage}
         onCreateFolder={handleCreateFolder}
         onRenameFolder={handleRenameFolder}
-        onDeleteFolder={handleDeleteFolder}
+        onRequestDeleteFolder={handleRequestDeleteFolder}
         onCreateNote={handleCreateNote}
         onRenameNote={handleRenameNote}
-        onDeleteNote={handleDeleteNote}
+        onRequestDeleteNote={handleRequestDeleteNote}
         onExportNote={handleExportNote}
-        onTriggerImportTxt={triggerTxtImport}
       />
 
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -696,7 +650,6 @@ export default function App() {
                 onChangeOrderMode={handleChangeOrderMode}
                 onReshuffle={handleReshuffle}
                 onOpenPasteImport={() => setIsPasteModalOpen(true)}
-                onTriggerTxtImport={() => triggerTxtImport()}
                 onExportTxt={() => handleExportNote(activeNote.id)}
                 showIndexCol={showIndexCol}
                 showStarCol={showStarCol}
@@ -751,35 +704,6 @@ export default function App() {
               onClose={() => setIsPasteModalOpen(false)}
               onConfirmImport={handleConfirmPasteImport}
             />
-
-            <ConfirmDialog
-              isOpen={pendingDelete !== null}
-              title={
-                pendingDelete?.kind === 'segment'
-                  ? 'Delete Section?'
-                  : pendingDelete?.kind === 'entries' && pendingDelete.ids.length === 1
-                    ? 'Delete Entry?'
-                    : `Delete ${pendingDelete?.kind === 'entries' ? pendingDelete.ids.length : 0} Entries?`
-              }
-              message={
-                pendingDelete?.kind === 'segment'
-                  ? 'Are you sure you want to delete this section divider? Entries under it will stay in the note.'
-                  : pendingDelete?.kind === 'entries' && pendingDelete.ids.length === 1
-                    ? 'Are you sure you want to delete this entry? This action cannot be undone.'
-                    : 'Are you sure you want to delete the selected entries? This action cannot be undone.'
-              }
-              detail={
-                pendingDelete?.kind === 'segment'
-                  ? pendingDelete.label
-                  : pendingDelete?.kind === 'entries' && pendingDelete.preview
-                    ? pendingDelete.preview
-                    : undefined
-              }
-              confirmLabel="Delete"
-              cancelLabel="Cancel"
-              onConfirm={handleConfirmPendingDelete}
-              onCancel={() => setPendingDelete(null)}
-            />
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
@@ -806,7 +730,7 @@ export default function App() {
               Select or create a note
             </h1>
             <p className="mt-1.5 max-w-sm text-xs text-slate-500">
-              Choose a note from the directory on the left, or import a local .txt file to begin studying.
+              Choose a note from the directory on the left, or create a new note to begin studying.
             </p>
             <div className="mt-5 flex items-center gap-3">
               <button
@@ -844,16 +768,20 @@ export default function App() {
               >
                 New Note
               </button>
-              <button
-                type="button"
-                onClick={() => triggerTxtImport()}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Import .txt File
-              </button>
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={pendingDelete !== null}
+          title={confirmDialogProps.title}
+          message={confirmDialogProps.message}
+          detail={confirmDialogProps.detail}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={handleConfirmPendingDelete}
+          onCancel={() => setPendingDelete(null)}
+        />
       </main>
     </div>
   );
