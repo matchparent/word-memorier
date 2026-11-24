@@ -89,9 +89,9 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
 
   return (
     <header className="border-b border-slate-200 bg-white">
-      {/* Row 1: Breadcrumb + Prominent Title + File Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 md:gap-4 md:px-6 md:py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
+      {/* Row 1: Breadcrumb + Prominent Title, then File Actions on next line */}
+      <div className="flex flex-col gap-2.5 px-3 py-2.5 md:gap-3 md:px-6 md:py-3">
+        <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
           {!isDesktopSidebarOpen && (
             <button
               type="button"
