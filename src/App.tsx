@@ -30,13 +30,24 @@ import {
   updateNoteInWorkspace,
 } from './utils/treeHelpers';
 import { loadWorkspace, saveWorkspace } from './utils/storage';
-import { loadColumnVisibility, saveColumnVisibility } from './utils/tableLayout';
+import {
+  clearFieldOverrides,
+  createDefaultNoteStudyState,
+  loadColumnVisibility,
+  loadNoteStudyStates,
+  type NoteStudyState,
+  type NoteStudyStateMap,
+  saveColumnVisibility,
+  saveNoteStudyStates,
+  toggleCellVisibility,
+} from './utils/tableLayout';
 import { SidebarTree } from './components/SidebarTree';
 import { StudyToolbar } from './components/StudyToolbar';
 import { MultiSelectBar } from './components/MultiSelectBar';
 import { NoteTable } from './components/NoteTable';
 import { PasteImportModal } from './components/PasteImportModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { EditEntryModal } from './components/EditEntryModal';
 
 type PendingDeleteAction =
   | { kind: 'segment'; id: string; label: string }
@@ -49,19 +60,17 @@ type PendingDeleteAction =
 export default function App() {
   const [workspace, setWorkspace] = useState<NotebookWorkspace>(() => loadWorkspace());
 
-  // Study controls state
-  const [showLang1, setShowLang1] = useState(true);
-  const [showLang2, setShowLang2] = useState(true);
+  // Persisted per-note study controls state
+  const [studyStatesByNote, setStudyStatesByNote] = useState<NoteStudyStateMap>(() =>
+    loadNoteStudyStates(),
+  );
   const [initialColVis] = useState(() => loadColumnVisibility());
   const [showIndexCol, setShowIndexCol] = useState(initialColVis.index);
   const [showStarCol, setShowStarCol] = useState(initialColVis.star);
-  const [onlyStarred, setOnlyStarred] = useState(false);
-  const [orderMode, setOrderMode] = useState<DisplayOrderMode>('sequential');
-  const [randomSeed, setRandomSeed] = useState<number>(() => Date.now());
 
-  // Multi-select state
-  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  // Multi-select state (active whenever any row checkbox is checked)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const isMultiSelectMode = selectedIds.size > 0;
 
   // UI overlays & file input
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(() => {
@@ -81,6 +90,10 @@ export default function App() {
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [editingEntryTarget, setEditingEntryTarget] = useState<{
+    entry: NoteEntryItem;
+    initialField: 'lang1' | 'lang2';
+  } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteAction>(null);
   const [toastMessage, setToastMessage] = useState<{
     type: 'info' | 'error';
@@ -91,6 +104,11 @@ export default function App() {
   useEffect(() => {
     saveWorkspace(workspace);
   }, [workspace]);
+
+  // Persist per-note study state (order mode, random seed, lang1/lang2/star checks, cell hide/show)
+  useEffect(() => {
+    saveNoteStudyStates(studyStatesByNote);
+  }, [studyStatesByNote]);
 
   useEffect(() => {
     try {
@@ -126,6 +144,27 @@ export default function App() {
 
   const activeNote = activeLocation?.note ?? null;
 
+  const activeStudyState = useMemo<NoteStudyState>(() => {
+    if (!activeNote) return createDefaultNoteStudyState(0);
+    return studyStatesByNote[activeNote.id] ?? createDefaultNoteStudyState(0);
+  }, [activeNote, studyStatesByNote]);
+
+  const { orderMode, randomSeed, showLang1, showLang2, onlyStarred, cellOverrides } =
+    activeStudyState;
+
+  const updateActiveStudyState = (updater: (prev: NoteStudyState) => NoteStudyState) => {
+    if (!activeNote) return;
+    const noteId = activeNote.id;
+    setStudyStatesByNote((prevMap) => {
+      const current = prevMap[noteId] ?? createDefaultNoteStudyState();
+      const nextState = updater(current);
+      return {
+        ...prevMap,
+        [noteId]: nextState,
+      };
+    });
+  };
+
   const entryStats = useMemo(() => {
     if (!activeNote) return { total: 0, starred: 0 };
     let total = 0;
@@ -148,7 +187,6 @@ export default function App() {
   }, [activeNote, onlyStarred]);
 
   const exitMultiSelect = () => {
-    setIsMultiSelectMode(false);
     setSelectedIds(new Set());
   };
 
@@ -313,11 +351,44 @@ export default function App() {
   };
 
   const handleChangeOrderMode = (mode: DisplayOrderMode) => {
-    if (mode === 'random') {
-      // Switch to random display using current timestamp seed
-      setRandomSeed(Date.now());
-    }
-    setOrderMode(mode);
+    updateActiveStudyState((prev) => ({
+      ...prev,
+      orderMode: mode,
+      randomSeed: mode === 'random' ? Date.now() : prev.randomSeed,
+    }));
+  };
+
+  const handleToggleShowLang1 = (show: boolean) => {
+    updateActiveStudyState((prev) => ({
+      ...prev,
+      showLang1: show,
+      cellOverrides: clearFieldOverrides(prev.cellOverrides, 'lang1'),
+    }));
+  };
+
+  const handleToggleShowLang2 = (show: boolean) => {
+    updateActiveStudyState((prev) => ({
+      ...prev,
+      showLang2: show,
+      cellOverrides: clearFieldOverrides(prev.cellOverrides, 'lang2'),
+    }));
+  };
+
+  const handleToggleOnlyStarred = (only: boolean) => {
+    updateActiveStudyState((prev) => ({
+      ...prev,
+      onlyStarred: only,
+    }));
+  };
+
+  const handleToggleCellVisibility = (entryId: string, field: 'lang1' | 'lang2') => {
+    updateActiveStudyState((prev) => {
+      const isColShown = field === 'lang1' ? prev.showLang1 : prev.showLang2;
+      return {
+        ...prev,
+        cellOverrides: toggleCellVisibility(prev.cellOverrides, entryId, field, isColShown),
+      };
+    });
   };
 
   const handleToggleStar = (entryId: string) => {
@@ -330,14 +401,15 @@ export default function App() {
     }));
   };
 
-  const handleUpdateEntry = (entryId: string, field: 'lang1' | 'lang2', value: string) => {
+  const handleConfirmEditEntry = (entryId: string, lang1: string, lang2: string) => {
     mutateActiveNote((n) => ({
       ...n,
       updatedAt: Date.now(),
       items: n.items.map((it) =>
-        it.kind === 'entry' && it.id === entryId ? { ...it, [field]: value } : it,
+        it.kind === 'entry' && it.id === entryId ? { ...it, lang1, lang2 } : it,
       ),
     }));
+    setEditingEntryTarget(null);
   };
 
   const handleUpdateSegmentTitle = (segmentId: string, title: string) => {
@@ -374,7 +446,10 @@ export default function App() {
 
   const handleInsertSegmentAt = (afterItemId: string | null): string => {
     if (orderMode === 'random') {
-      setOrderMode('sequential');
+      updateActiveStudyState((prev) => ({
+        ...prev,
+        orderMode: 'sequential',
+      }));
     }
     const newSeg = createSegmentItem('');
     mutateActiveNote((n) => ({
@@ -395,10 +470,6 @@ export default function App() {
   };
 
   // --- Multi-Select Handlers ---
-  const handleEnterMultiSelectWithRow = (entryId: string) => {
-    setIsMultiSelectMode(true);
-    setSelectedIds(new Set([entryId]));
-  };
 
   const handleToggleSelectRow = (entryId: string) => {
     setSelectedIds((prev) => {
@@ -674,22 +745,25 @@ export default function App() {
               showIndexCol={showIndexCol}
               showStarCol={showStarCol}
               onlyStarred={onlyStarred}
+              cellOverrides={cellOverrides}
               isMultiSelectMode={isMultiSelectMode}
               selectedIds={selectedIds}
               isHeaderHidden={isHeaderHidden}
               onShowHeader={() => setIsHeaderHidden(false)}
-              onToggleShowLang1={setShowLang1}
-              onToggleShowLang2={setShowLang2}
-              onToggleOnlyStarred={setOnlyStarred}
+              onToggleShowLang1={handleToggleShowLang1}
+              onToggleShowLang2={handleToggleShowLang2}
+              onToggleOnlyStarred={handleToggleOnlyStarred}
+              onToggleCellVisibility={handleToggleCellVisibility}
               onUpdateColumnLabels={handleUpdateColumnLabels}
               onToggleStar={handleToggleStar}
-              onUpdateEntry={handleUpdateEntry}
+              onRequestEditEntry={(entry, initialField) =>
+                setEditingEntryTarget({ entry, initialField })
+              }
               onUpdateSegmentTitle={handleUpdateSegmentTitle}
               onRequestDeleteSegment={handleRequestDeleteSegment}
               onInsertEntryAt={handleInsertEntryAt}
               onInsertSegmentAt={handleInsertSegmentAt}
               onOpenPasteImport={() => setIsPasteModalOpen(true)}
-              onEnterMultiSelectWithRow={handleEnterMultiSelectWithRow}
               onToggleSelectRow={handleToggleSelectRow}
             />
 
@@ -697,6 +771,16 @@ export default function App() {
               isOpen={isPasteModalOpen}
               onClose={() => setIsPasteModalOpen(false)}
               onConfirmImport={handleConfirmPasteImport}
+            />
+
+            <EditEntryModal
+              isOpen={editingEntryTarget !== null}
+              entry={editingEntryTarget?.entry ?? null}
+              lang1Label={activeNote.lang1Label}
+              lang2Label={activeNote.lang2Label}
+              initialField={editingEntryTarget?.initialField ?? 'lang1'}
+              onClose={() => setEditingEntryTarget(null)}
+              onConfirm={handleConfirmEditEntry}
             />
           </>
         ) : (

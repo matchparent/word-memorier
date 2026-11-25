@@ -272,7 +272,7 @@ export const StudyToolbar: React.FC<StudyToolbarProps> = ({
               ·
             </span>
             <span className="hidden lg:inline text-slate-400">
-              Long-press row to select · Click masked cell to reveal · Click text to edit
+              Check # to select · Click cell to show/hide · Long-press cell to edit
             </span>
           </div>
         </div>

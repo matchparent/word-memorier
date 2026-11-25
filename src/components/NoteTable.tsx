@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   ClipboardPaste,
-  EyeOff,
   PanelTopOpen,
   Plus,
   SplitSquareVertical,
@@ -17,6 +16,7 @@ import {
   type ColumnWidths,
   getColumnCheckState,
   getVisibleColumnCount,
+  isCellVisible,
   loadSavedColumnWidths,
   resizeColumnWidth,
   saveColumnWidths,
@@ -31,6 +31,7 @@ interface NoteTableProps {
   showIndexCol: boolean;
   showStarCol: boolean;
   onlyStarred: boolean;
+  cellOverrides: Readonly<Record<string, boolean>>;
   isMultiSelectMode: boolean;
   selectedIds: Set<string>;
   isHeaderHidden: boolean;
@@ -38,15 +39,15 @@ interface NoteTableProps {
   onToggleShowLang1: (show: boolean) => void;
   onToggleShowLang2: (show: boolean) => void;
   onToggleOnlyStarred: (only: boolean) => void;
+  onToggleCellVisibility: (entryId: string, field: 'lang1' | 'lang2') => void;
   onUpdateColumnLabels: (lang1Label: string, lang2Label: string) => void;
   onToggleStar: (entryId: string) => void;
-  onUpdateEntry: (entryId: string, field: 'lang1' | 'lang2', value: string) => void;
+  onRequestEditEntry: (entry: NoteEntryItem, initialField: 'lang1' | 'lang2') => void;
   onUpdateSegmentTitle: (segmentId: string, title: string) => void;
   onRequestDeleteSegment: (segment: { id: string; title: string; segmentIndex: number }) => void;
   onInsertEntryAt: (lang1: string, lang2: string, afterItemId: string | null) => string;
   onInsertSegmentAt: (afterItemId: string | null) => string;
   onOpenPasteImport: () => void;
-  onEnterMultiSelectWithRow: (entryId: string) => void;
   onToggleSelectRow: (entryId: string) => void;
 }
 
@@ -65,6 +66,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   showIndexCol,
   showStarCol,
   onlyStarred,
+  cellOverrides,
   isMultiSelectMode,
   selectedIds,
   isHeaderHidden,
@@ -72,25 +74,17 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   onToggleShowLang1,
   onToggleShowLang2,
   onToggleOnlyStarred,
+  onToggleCellVisibility,
   onUpdateColumnLabels,
   onToggleStar,
-  onUpdateEntry,
+  onRequestEditEntry,
   onUpdateSegmentTitle,
   onRequestDeleteSegment,
   onInsertEntryAt,
   onInsertSegmentAt,
   onOpenPasteImport,
-  onEnterMultiSelectWithRow,
   onToggleSelectRow,
 }) => {
-  // Temporarily revealed individual cells when column is hidden
-  const [revealedCells, setRevealedCells] = useState<Set<string>>(() => new Set());
-  // Currently editing cell
-  const [editingCell, setEditingCell] = useState<{
-    id: string;
-    field: 'lang1' | 'lang2';
-    value: string;
-  } | null>(null);
   // Editing segment title
   const [editingSegment, setEditingSegment] = useState<{ id: string; value: string } | null>(null);
   // Editing column labels
@@ -116,11 +110,11 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     lang2: null,
   });
 
-  // Long-press handling refs
-  const longPressTimerRef = useRef<number | null>(null);
-  const pointerOriginRef = useRef<{ x: number; y: number } | null>(null);
-  const suppressClickRef = useRef(false);
-  const [pressingRowId, setPressingRowId] = useState<string | null>(null);
+  // Long-press handling refs for cell edit modal
+  const cellLongPressTimerRef = useRef<number | null>(null);
+  const cellPointerOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressCellClickRef = useRef(false);
+  const [pressingCellKey, setPressingCellKey] = useState<string | null>(null);
 
   // Long-press handling refs for column header rename
   const colLabelTimerRef = useRef<number | null>(null);
@@ -133,9 +127,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     setInlineInsertAnchor(null);
     setInlineLang1('');
     setInlineLang2('');
-    setEditingCell(null);
     setEditingSegment(null);
-    setRevealedCells(new Set());
   }, [note.id]);
 
   useEffect(() => {
@@ -152,24 +144,10 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   }, []);
 
   const handleToggleColumn1 = (checked: boolean) => {
-    setRevealedCells((prev) => {
-      const next = new Set(prev);
-      for (const key of next) {
-        if (key.endsWith(':lang1')) next.delete(key);
-      }
-      return next;
-    });
     onToggleShowLang1(checked);
   };
 
   const handleToggleColumn2 = (checked: boolean) => {
-    setRevealedCells((prev) => {
-      const next = new Set(prev);
-      for (const key of next) {
-        if (key.endsWith(':lang2')) next.delete(key);
-      }
-      return next;
-    });
     onToggleShowLang2(checked);
   };
 
@@ -231,13 +209,13 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   );
 
   const col1CheckState = useMemo(
-    () => getColumnCheckState(visibleEntryIds, showLang1, revealedCells, 'lang1'),
-    [visibleEntryIds, showLang1, revealedCells],
+    () => getColumnCheckState(visibleEntryIds, showLang1, cellOverrides, 'lang1'),
+    [visibleEntryIds, showLang1, cellOverrides],
   );
 
   const col2CheckState = useMemo(
-    () => getColumnCheckState(visibleEntryIds, showLang2, revealedCells, 'lang2'),
-    [visibleEntryIds, showLang2, revealedCells],
+    () => getColumnCheckState(visibleEntryIds, showLang2, cellOverrides, 'lang2'),
+    [visibleEntryIds, showLang2, cellOverrides],
   );
 
   useEffect(() => {
@@ -252,74 +230,76 @@ export const NoteTable: React.FC<NoteTableProps> = ({
     }
   }, [col2CheckState]);
 
-  const clearLongPress = () => {
-    if (longPressTimerRef.current !== null) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
+  const clearCellLongPress = () => {
+    if (cellLongPressTimerRef.current !== null) {
+      window.clearTimeout(cellLongPressTimerRef.current);
+      cellLongPressTimerRef.current = null;
     }
-    pointerOriginRef.current = null;
-    setPressingRowId(null);
+    cellPointerOriginRef.current = null;
+    setPressingCellKey(null);
   };
 
-  const handleRowPointerDown = (e: React.PointerEvent<HTMLTableRowElement>, entryId: string) => {
+  const handleCellPointerDown = (
+    e: React.PointerEvent<HTMLButtonElement>,
+    entry: NoteEntryItem,
+    field: 'lang1' | 'lang2',
+  ) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    const target = e.target as HTMLElement;
-    if (
-      target.closest('input') ||
-      target.closest('textarea') ||
-      target.closest('[data-no-longpress="true"]')
-    ) {
-      return;
-    }
     if (isMultiSelectMode) return;
 
-    clearLongPress();
-    pointerOriginRef.current = { x: e.clientX, y: e.clientY };
-    setPressingRowId(entryId);
+    clearCellLongPress();
+    const cellKey = `${entry.id}:${field}`;
+    cellPointerOriginRef.current = { x: e.clientX, y: e.clientY };
+    setPressingCellKey(cellKey);
 
-    longPressTimerRef.current = window.setTimeout(() => {
-      longPressTimerRef.current = null;
-      setPressingRowId(null);
-      suppressClickRef.current = true;
-      onEnterMultiSelectWithRow(entryId);
+    cellLongPressTimerRef.current = window.setTimeout(() => {
+      cellLongPressTimerRef.current = null;
+      cellPointerOriginRef.current = null;
+      setPressingCellKey(null);
+      suppressCellClickRef.current = true;
+      onRequestEditEntry(entry, field);
       if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
         navigator.vibrate(20);
       }
       window.setTimeout(() => {
-        suppressClickRef.current = false;
-      }, 350);
+        suppressCellClickRef.current = false;
+      }, 400);
     }, LONG_PRESS_MS);
   };
 
-  const handleRowPointerMove = (e: React.PointerEvent<HTMLTableRowElement>) => {
-    if (!pointerOriginRef.current) return;
-    const dx = Math.abs(e.clientX - pointerOriginRef.current.x);
-    const dy = Math.abs(e.clientY - pointerOriginRef.current.y);
+  const handleCellPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!cellPointerOriginRef.current) return;
+    const dx = Math.abs(e.clientX - cellPointerOriginRef.current.x);
+    const dy = Math.abs(e.clientY - cellPointerOriginRef.current.y);
     if (dx > 8 || dy > 8) {
-      clearLongPress();
+      clearCellLongPress();
     }
   };
 
-  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>, entryId: string) => {
-    if (suppressClickRef.current) {
+  const handleCellClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    entryId: string,
+    field: 'lang1' | 'lang2',
+  ) => {
+    if (suppressCellClickRef.current) {
       e.preventDefault();
       e.stopPropagation();
+      suppressCellClickRef.current = false;
       return;
     }
+    if (isMultiSelectMode) {
+      return;
+    }
+    e.stopPropagation();
+    onToggleCellVisibility(entryId, field);
+  };
+
+  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>, entryId: string) => {
     if (isMultiSelectMode) {
       const target = e.target as HTMLElement;
       if (target.closest('[data-no-longpress="true"]')) return;
       onToggleSelectRow(entryId);
     }
-  };
-
-  const commitCellEdit = () => {
-    if (!editingCell) return;
-    const trimmed = editingCell.value.trim();
-    if (trimmed) {
-      onUpdateEntry(editingCell.id, editingCell.field, trimmed);
-    }
-    setEditingCell(null);
   };
 
   const commitSegmentEdit = () => {
@@ -663,94 +643,56 @@ export const NoteTable: React.FC<NoteTableProps> = ({
   ) => {
     const isColumnShown = field === 'lang1' ? showLang1 : showLang2;
     const cellKey = `${entry.id}:${field}`;
-    const isIndividuallyRevealed = revealedCells.has(cellKey);
-    const isTextVisible = isColumnShown || isIndividuallyRevealed;
+    const isTextVisible = isCellVisible(entry.id, field, isColumnShown, cellOverrides);
     const textValue = field === 'lang1' ? entry.lang1 : entry.lang2;
     const colTitle = field === 'lang1' ? note.lang1Label : note.lang2Label;
-
-    const isEditing = editingCell?.id === entry.id && editingCell?.field === field;
-
-    if (isEditing) {
-      return (
-        <textarea
-          autoFocus
-          rows={Math.min(4, Math.max(1, textValue.split('\n').length))}
-          value={editingCell.value}
-          onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
-          onBlur={commitCellEdit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              commitCellEdit();
-            } else if (e.key === 'Escape') {
-              setEditingCell(null);
-            }
-          }}
-          aria-label={`Edit row ${displayIndex} ${colTitle}`}
-          className="w-full resize-none rounded-md border border-blue-500 bg-white px-2.5 py-1.5 text-sm leading-relaxed text-slate-900 outline-none ring-2 ring-blue-500/15"
-        />
-      );
-    }
+    const isPressingCell = pressingCellKey === cellKey;
 
     if (!isTextVisible) {
       return (
         <button
           type="button"
-          onClick={(e) => {
-            if (suppressClickRef.current || isMultiSelectMode) return;
-            e.stopPropagation();
-            setRevealedCells((prev) => {
-              const next = new Set(prev);
-              next.add(cellKey);
-              return next;
-            });
-          }}
-          aria-label={`Reveal row ${displayIndex} ${colTitle}`}
-          className="group/mask flex min-h-9 w-full min-w-0 items-center justify-between rounded-md border border-dashed border-slate-200 bg-slate-100/90 px-2 py-1.5 text-left text-xs text-slate-400 transition-colors hover:border-slate-300 hover:bg-slate-200/70 hover:text-slate-600 md:px-3"
+          onPointerDown={(e) => handleCellPointerDown(e, entry, field)}
+          onPointerMove={handleCellPointerMove}
+          onPointerUp={clearCellLongPress}
+          onPointerCancel={clearCellLongPress}
+          onPointerLeave={clearCellLongPress}
+          onContextMenu={(e) => e.preventDefault()}
+          onClick={(e) => handleCellClick(e, entry.id, field)}
+          aria-label={`Show row ${displayIndex} ${colTitle}`}
+          title="Click to show · Long-press to edit"
+          className={`group/mask flex min-h-9 w-full min-w-0 select-none items-center justify-between rounded-md border border-dashed px-2 py-1.5 text-left text-xs transition-colors md:px-3 ${
+            isPressingCell
+              ? 'border-blue-400 bg-blue-100/80 text-blue-700'
+              : 'border-slate-200 bg-slate-100/90 text-slate-400 hover:border-slate-300 hover:bg-slate-200/70 hover:text-slate-600'
+          }`}
         >
           <span className="select-none tracking-widest">••••••</span>
           <span className="hidden opacity-0 transition-opacity group-hover/mask:opacity-100 sm:inline">
-            Click to reveal
+            Click to show
           </span>
         </button>
       );
     }
 
     return (
-      <div className="group/cell flex min-w-0 items-start justify-between gap-1 md:gap-2">
-        <button
-          type="button"
-          onClick={(e) => {
-            if (suppressClickRef.current || isMultiSelectMode) return;
-            e.stopPropagation();
-            setEditingCell({ id: entry.id, field, value: textValue });
-          }}
-          aria-label={`Edit row ${displayIndex} ${colTitle}: ${textValue}`}
-          className="min-h-9 min-w-0 flex-1 rounded-md px-1.5 py-1.5 text-left text-[13px] leading-relaxed text-slate-900 transition-colors hover:bg-slate-100/80 whitespace-pre-wrap break-words [overflow-wrap:anywhere] md:px-2 md:text-sm"
-        >
-          {textValue}
-        </button>
-
-        {!isColumnShown && isIndividuallyRevealed && !isMultiSelectMode && (
-          <button
-            type="button"
-            data-no-longpress="true"
-            title="Hide again"
-            aria-label={`Hide row ${displayIndex} ${colTitle}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setRevealedCells((prev) => {
-                const next = new Set(prev);
-                next.delete(cellKey);
-                return next;
-              });
-            }}
-            className="mt-1.5 shrink-0 rounded p-1 text-slate-400 opacity-100 transition-opacity hover:bg-slate-200 hover:text-slate-700 md:opacity-0 md:group-hover/cell:opacity-100"
-          >
-            <EyeOff className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        onPointerDown={(e) => handleCellPointerDown(e, entry, field)}
+        onPointerMove={handleCellPointerMove}
+        onPointerUp={clearCellLongPress}
+        onPointerCancel={clearCellLongPress}
+        onPointerLeave={clearCellLongPress}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={(e) => handleCellClick(e, entry.id, field)}
+        aria-label={`Hide row ${displayIndex} ${colTitle}: ${textValue}`}
+        title="Click to hide · Long-press to edit"
+        className={`min-h-9 w-full min-w-0 select-none rounded-md px-1.5 py-1.5 text-left text-[13px] leading-relaxed text-slate-900 transition-colors whitespace-pre-wrap break-words [overflow-wrap:anywhere] md:px-2 md:text-sm ${
+          isPressingCell ? 'bg-blue-100/70' : 'hover:bg-slate-100/80'
+        }`}
+      >
+        {textValue}
+      </button>
     );
   };
 
@@ -775,13 +717,13 @@ export const NoteTable: React.FC<NoteTableProps> = ({
             {showIndexCol && (
               <col
                 width={activeColWidths?.index}
-                className={activeColWidths ? undefined : 'w-11 md:w-20'}
+                className={activeColWidths ? undefined : 'w-10 md:w-14'}
               />
             )}
             {showStarCol && (
               <col
                 width={activeColWidths?.star}
-                className={activeColWidths ? undefined : 'w-14 md:w-24'}
+                className={activeColWidths ? undefined : 'w-14 md:w-22'}
               />
             )}
             <col width={activeColWidths?.lang1} />
@@ -789,29 +731,16 @@ export const NoteTable: React.FC<NoteTableProps> = ({
           </colgroup>
           <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur-xs">
             <tr className="text-[11px] font-semibold text-slate-600 md:text-xs">
-              {/* Column 1: # + Insert at Top trigger */}
+              {/* Column 1: # (checkbox column header, no index numbers or +) */}
               {showIndexCol && (
                 <th
                   ref={(el) => {
                     thRefs.current.index = el;
                   }}
                   scope="col"
-                  className="relative px-1 py-2 text-center md:px-3 md:py-2.5"
+                  className="relative px-1 py-2 text-center md:px-2 md:py-2.5"
                 >
-                  <div className="inline-flex items-center justify-center gap-0.5 md:gap-1">
-                    <span>#</span>
-                    {!isMultiSelectMode && (
-                      <button
-                        type="button"
-                        title="Insert at top of table"
-                        aria-label="Insert row at top"
-                        onClick={() => openInlineInsert(INSERT_AT_TOP)}
-                        className="rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
+                  <span>#</span>
                   {renderResizeHandle('index', 'Index')}
                 </th>
               )}
@@ -842,7 +771,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 </th>
               )}
 
-              {/* Column 3: Lang 1 + Checkbox only (no "Show text" label) */}
+              {/* Column 3: Lang 1 + Checkbox */}
               <th
                 ref={(el) => {
                   thRefs.current.lang1 = el;
@@ -851,17 +780,6 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                 className="relative px-2 py-2 md:px-4 md:py-2.5"
               >
                 <div className="flex min-w-0 items-center gap-1.5 pr-1">
-                  {!showIndexCol && !isMultiSelectMode && (
-                    <button
-                      type="button"
-                      title="Insert at top of table"
-                      aria-label="Insert row at top"
-                      onClick={() => openInlineInsert(INSERT_AT_TOP)}
-                      className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  )}
                   <input
                     ref={lang1CheckboxRef}
                     type="checkbox"
@@ -964,18 +882,31 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                     )}
                   </div>
 
-                  {isHeaderHidden && (
-                    <button
-                      type="button"
-                      title="Show top toolbar"
-                      aria-label="Show header"
-                      onClick={onShowHeader}
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 whitespace-nowrap shrink-0 md:px-2 md:py-1"
-                    >
-                      <PanelTopOpen className="h-3.5 w-3.5 text-slate-500" />
-                      <span className="hidden sm:inline">Show Header</span>
-                    </button>
-                  )}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {isHeaderHidden && (
+                      <button
+                        type="button"
+                        title="Show top toolbar"
+                        aria-label="Show header"
+                        onClick={onShowHeader}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 whitespace-nowrap shrink-0 md:px-2 md:py-1"
+                      >
+                        <PanelTopOpen className="h-3.5 w-3.5 text-slate-500" />
+                        <span className="hidden sm:inline">Show Header</span>
+                      </button>
+                    )}
+                    {!isMultiSelectMode && (
+                      <button
+                        type="button"
+                        title="Insert at top of table"
+                        aria-label="Insert row at top"
+                        onClick={() => openInlineInsert(INSERT_AT_TOP)}
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {renderResizeHandle('lang2', 'Language 2')}
               </th>
@@ -1071,7 +1002,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:transition-opacity md:group-hover/seg:opacity-100 md:focus-within:opacity-100">
+                          <div className="flex items-center gap-1">
                             {!isMultiSelectMode && (
                               <button
                                 type="button"
@@ -1093,7 +1024,7 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                                   segmentIndex: row.segmentIndex,
                                 })
                               }
-                              className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                              className="rounded p-1 text-slate-400 opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 md:opacity-0 md:group-hover/seg:opacity-100 md:focus-visible:opacity-100"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -1108,7 +1039,6 @@ export const NoteTable: React.FC<NoteTableProps> = ({
 
               const { entry, displayIndex } = row;
               const isSelected = selectedIds.has(entry.id);
-              const isPressing = pressingRowId === entry.id;
               const selectionCheckbox = (
                 <span
                   aria-hidden="true"
@@ -1127,44 +1057,30 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                   <tr
                     data-entry-id={entry.id}
                     data-selected={isSelected ? 'true' : 'false'}
-                    onPointerDown={(e) => handleRowPointerDown(e, entry.id)}
-                    onPointerMove={handleRowPointerMove}
-                    onPointerUp={clearLongPress}
-                    onPointerCancel={clearLongPress}
-                    onPointerLeave={clearLongPress}
                     onClick={(e) => handleRowClick(e, entry.id)}
                     className={`group/row transition-colors ${
-                      isSelected
-                        ? 'bg-blue-50/85 hover:bg-blue-50'
-                        : isPressing
-                          ? 'bg-slate-100'
-                          : 'hover:bg-slate-50/70'
+                      isSelected ? 'bg-blue-50/85 hover:bg-blue-50' : 'hover:bg-slate-50/70'
                     } ${isMultiSelectMode ? 'cursor-pointer select-none' : ''}`}
                   >
-                    {/* Column 1: # + Insert Below Row affordance */}
+                    {/* Column 1: # (always directly shows row selection checkbox) */}
                     {showIndexCol && (
-                      <td className="px-1 py-2 text-center align-middle md:px-3 md:py-2.5">
-                        <div className="inline-flex items-center justify-center gap-0.5 md:gap-1.5">
-                          {isMultiSelectMode && selectionCheckbox}
-                          <span className="font-mono-tabular text-xs font-medium text-slate-500">
-                            {displayIndex}
-                          </span>
-                          {!isMultiSelectMode && (
-                            <button
-                              type="button"
-                              data-no-longpress="true"
-                              title="Insert below this row"
-                              aria-label={`Insert below row ${displayIndex}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openInlineInsert(entry.id);
-                              }}
-                              className="rounded p-0.5 text-slate-400 opacity-75 transition-opacity hover:bg-blue-50 hover:text-blue-600 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
+                      <td className="px-1 py-1.5 text-center align-middle md:px-2 md:py-2">
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={isSelected}
+                          aria-label={
+                            isSelected ? `Deselect row ${displayIndex}` : `Select row ${displayIndex}`
+                          }
+                          data-no-longpress="true"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelectRow(entry.id);
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
+                        >
+                          {selectionCheckbox}
+                        </button>
                       </td>
                     )}
 
@@ -1212,13 +1128,13 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                       )}
                     </td>
 
-                    {/* Column 4: Lang 2 */}
+                    {/* Column 4: Lang 2 + Permanent Far-Right + */}
                     <td className="px-1.5 py-2 align-middle md:px-4">
-                      {!showIndexCol && !isMultiSelectMode ? (
-                        <div className="flex min-w-0 items-start gap-1">
-                          <div className="min-w-0 flex-1">
-                            {renderLanguageCell(entry, 'lang2', displayIndex)}
-                          </div>
+                      <div className="flex min-w-0 items-start gap-1">
+                        <div className="min-w-0 flex-1">
+                          {renderLanguageCell(entry, 'lang2', displayIndex)}
+                        </div>
+                        {!isMultiSelectMode && (
                           <button
                             type="button"
                             data-no-longpress="true"
@@ -1228,14 +1144,12 @@ export const NoteTable: React.FC<NoteTableProps> = ({
                               e.stopPropagation();
                               openInlineInsert(entry.id);
                             }}
-                            className="mt-1.5 shrink-0 rounded p-0.5 text-slate-400 opacity-75 transition-opacity hover:bg-blue-50 hover:text-blue-600 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
+                            className="mt-1.5 shrink-0 rounded p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
-                        </div>
-                      ) : (
-                        renderLanguageCell(entry, 'lang2', displayIndex)
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {inlineInsertAnchor === entry.id && renderInlineInsertRow()}
